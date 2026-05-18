@@ -137,7 +137,7 @@ fbP.Input := fError;
 fbP.Run();
 fbI.Input := fbP.Output;
 fbI.Run();
-fbD.Input := bP.Output + fbI.Output;
+fbD.Input := fbP.Output + fbI.Output;
 fbD.Run();
 
 fbPlant.Input := fbP.Output + fbI.Output + fbD.Output;
