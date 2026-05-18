@@ -1,0 +1,165 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_Deadband" Id="{93518208-4727-44d3-80ce-cf13d655b560}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Suppresses small input signals within a configurable band.
+
+When the input falls within [:attr:`Minimum`, :attr:`Maximum`], the output
+is either zeroed or held at its last value depending on :attr:`Mode`. Outside
+the band the input passes through unchanged.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fMinimum`, :attr:`fMaximum`, and :attr:`eMode`
+   at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_Deadband EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fMinimum : LREAL; // Lower bound of the deadband. Clamped to <= Maximum.
+	_fMaximum : LREAL; // Upper bound of the deadband. Clamped to >= Minimum.
+	_eMode    : E_DeadbandMode; // Output behaviour when input is within the band.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{1c83c277-c900-4e84-9436-a07575e0613a}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fMaximum     : LREAL; // Upper bound of the deadband.
+	fMinimum     : LREAL; // Lower bound of the deadband.
+	eMode        : E_DeadbandMode; // Output behaviour when the input is within the band.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.Maximum  := fMaximum;
+THIS^.Minimum  := fMinimum;
+THIS^._eMode   := eMode;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Maximum" Id="{0d037737-23e6-4420-b270-cc5720e04509}">
+      <Declaration><![CDATA[(*
+Gets or sets the upper bound of the deadband.
+
+Internally clamped to be greater than or equal to :attr:`Minimum`.
+Set this before :attr:`Minimum` to ensure the guard applies correctly.
+*)
+PROPERTY Maximum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{f5035184-ba16-4323-b794-fed7019b8f38}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Maximum := THIS^._fMaximum;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{049f6a8f-6d49-4d9a-840e-cd47a4dcee53}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fMaximum := MAX(THIS^._fMinimum, Maximum);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Minimum" Id="{c300432d-a1d8-4804-abbd-4306b81d5fb8}">
+      <Declaration><![CDATA[(*
+Gets or sets the lower bound of the deadband.
+
+Internally clamped to be less than or equal to :attr:`Maximum`.
+Set :attr:`Maximum` before this property to ensure the guard applies correctly.
+*)
+PROPERTY Minimum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{41397aa9-b45f-4382-ad34-e413d00dd17b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Minimum := THIS^._fMinimum;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{65d310be-7b9a-49ae-bd81-38b6d55bcacf}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fMinimum := MIN(THIS^._fMaximum, Minimum);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Mode" Id="{7a766535-5ed1-416c-a2e4-d9a73bd7408a}">
+      <Declaration><![CDATA[(*
+Gets or sets the output behaviour when the input is within the band.
+
+:attr:`~E_DeadbandMode.Zero` sets the output to zero. 
+:attr:`~E_DeadbandMode.Hold` retains the last output value. 
+
+Changes take effect on th next :meth:`Run` call.
+*)
+PROPERTY Mode : E_DeadbandMode]]></Declaration>
+      <Get Name="Get" Id="{2639bbe6-d75c-49f8-84d8-d446f7239e9e}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Mode := THIS^._eMode;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{26adaf84-707d-475d-897b-b03045d8c98a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._eMode := Mode;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{cfcb48b2-59b8-47d9-bf5e-6e34a5ffdcd4}">
+      <Declaration><![CDATA[(* 
+Resets the output to a value consistent with the current mode. 
+
+In :attr:`~E_DeadbandMode.Zero` mode the output is set to zero.
+In :attr:`~E_DeadbandMode.Hold` mode the output is set to the current input.
+*)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE THIS^._eMode OF
+	E_DeadbandMode.Hold:
+		THIS^._fOutput := THIS^._fInput;
+	E_DeadbandMode.Zero:
+		THIS^._fOutput := 0;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{fab5d5a0-b0bf-46ac-99cc-b5c2054e0bfa}">
+      <Declaration><![CDATA[(* Applies the deadband to the current input. *)
+METHOD Run
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fMaximum := MAX(THIS^._fMinimum, THIS^._fMaximum);
+THIS^._fMinimum := MIN(THIS^._fMinimum, THIS^._fMaximum);
+
+IF THIS^._fInput >= THIS^._fMinimum AND THIS^._fInput <= THIS^._fMaximum THEN
+    CASE THIS^._eMode OF
+        E_DeadbandMode.Zero:
+            THIS^._fOutput := 0;
+        E_DeadbandMode.Hold:
+            ; // Output retains its last value.
+    END_CASE
+ELSE
+    THIS^._fOutput := THIS^._fInput;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

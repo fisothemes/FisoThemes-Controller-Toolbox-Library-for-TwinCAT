@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_PeriodicSignal" Id="{cbd39e12-2ae0-475d-bc34-310fd8fb240c}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Abstract base block for periodic signal generators.
+
+Provides :attr:`Period`, :attr:`Amplitude`, :attr:`Bias`, and :attr:`Phase`
+as shared properties for all periodic signal generators. Derived blocks can
+implement :meth:`Run` and :meth:`Reset` to produce their specific waveform.
+
+.. note::
+   Direct calls to this function block are not permitted (``no_explicit_call``).
+   Extend it and call the derived block instead.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK ABSTRACT FB_PeriodicSignal EXTENDS FB_SoComponent
+IMPLEMENTS I_PeriodicSignal
+VAR
+	_tPeriod    : LTIME; // Duration of one full cycle. Must be greater than zero.
+	_fAmplitude : LREAL; // Scales the raw wave. Output swings between Bias ± Amplitude.
+	_fBias      : LREAL; // Shifts the output vertically.
+	_fPhase     : LREAL; // Phase offset in radians. Shifts the wave horizontally.
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Amplitude" Id="{e33b959c-5507-4fe5-8252-6648d80eb04e}">
+      <Declaration><![CDATA[(*
+Gets or sets the amplitude. 
+
+The output swings between ``Bias + Amplitude`` and ``Bias - Amplitude``.
+*)
+PROPERTY Amplitude : LREAL]]></Declaration>
+      <Get Name="Get" Id="{3187b26c-6eec-4705-b7df-8dfd98e2a0e0}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Amplitude := THIS^._fAmplitude;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{0380e645-9c7c-4297-9818-1fbfb667941c}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fAmplitude := Amplitude;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Bias" Id="{cf70a9ab-678a-4268-8982-5635b0e4b580}">
+      <Declaration><![CDATA[(*
+Gets or sets the bias.
+
+This is a fixed offset added to the output, shifting the wave up or down.
+*)
+PROPERTY Bias : LREAL]]></Declaration>
+      <Get Name="Get" Id="{dcbbafb7-395e-494b-847a-d5612c4c1269}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Bias := THIS^._fBias;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{9afdc719-4056-4f16-a4d8-b3979882453e}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fBias := Bias;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Period" Id="{6589787f-fa06-4b3f-a6b3-cb90872faddb}">
+      <Declaration><![CDATA[(* 
+Gets or sets the period. 
+
+This is the time taken to complete one full cycle.
+*)
+PROPERTY Period : LTIME]]></Declaration>
+      <Get Name="Get" Id="{a9ca5ea3-b5f5-476a-ac0d-bb3ecf0e2701}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Period := THIS^._tPeriod;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{013e4795-3451-4f4b-9236-9a7f593eda5a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._tPeriod := Period;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Phase" Id="{6ccd7cf2-c9c6-4976-b356-fb63aac7f16d}">
+      <Declaration><![CDATA[(*
+Gets or sets the phase offset in radians.
+
+This shifts the wave horizontally. Negative values shift in the opposite direction.
+*)
+PROPERTY Phase : LREAL]]></Declaration>
+      <Get Name="Get" Id="{0928e42b-1ed4-4159-943b-8d54041ae22f}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Phase := THIS^._fPhase;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{50f6b25e-aa59-4efa-a1cc-2e14b65a1de4}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fPhase := Phase;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

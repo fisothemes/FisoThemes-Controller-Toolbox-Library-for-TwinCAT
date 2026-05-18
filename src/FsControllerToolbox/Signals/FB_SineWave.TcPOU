@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_SineWave" Id="{d29130eb-4a23-47b8-bc39-546112108674}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Generates a sine wave signal.
+
+The output follows:
+
+.. math::
+
+   y(t) = A \sin\left(\frac{2\pi}{T} t + \phi\right) + B
+
+where :math:`A` is :attr:`Amplitude`, :math:`T` is :attr:`Period` in seconds,
+:math:`\phi` is :attr:`Phase` in radians, and :math:`B` is :attr:`Bias`.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`tPeriod`, :attr:`fAmplitude`, :attr:`fBias`,
+   and :attr:`fPhase` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_SineWave EXTENDS FB_PeriodicSignal
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	{attribute 'hide'}
+	_tTime : LTIME;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{ee446ca3-174b-447b-8070-2228600d65c9}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	tPeriod      : LTIME; // Duration of one full cycle.
+	fAmplitude   : LREAL; // Scales the wave. Output swings between Bias ± Amplitude.
+	fBias        : LREAL; // Shifts the output vertically.
+	fPhase       : LREAL; // Phase offset in radians. Shifts the wave horizontally.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._tPeriod    := tPeriod;
+THIS^._fAmplitude := fAmplitude;
+THIS^._fBias      := fBias;
+THIS^._fPhase     := fPhase;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{ffb22389-cb5f-467a-be82-bf67be53a11a}">
+      <Declaration><![CDATA[(* Restarts the wave from the beginning by resetting the accumulated time to zero. The phase, amplitude, and bias are unaffected. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._tTime := LTIME#0S;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{9748f3f4-23bf-46a1-94a0-beb0f6e5a2d2}">
+      <Declaration><![CDATA[(*
+Advances the sine wave by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If the measured cycle
+   time is zero or :attr:`Period` is zero, the method returns early without
+   updating the output.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fT          : LREAL;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fPeriod : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(THIS^._tPeriod <= LTIME#0S OR NOT fbTaskCycle.HasChanged);
+
+THIS^._tTime := THIS^._tTime + TO_LTIME(LREAL_TO_ULINT(fT * 1.0E9));
+
+fPeriod := TO_LREAL(THIS^._tPeriod) / TO_LREAL(LTIME#1S);
+
+THIS^._fOutput := THIS^._fAmplitude 
+	* SIN((2.0 * Tc2_System.PI / fPeriod) * (TO_LREAL(THIS^._tTime) / TO_LREAL(LTIME#1S)) + THIS^._fPhase) 
+	+ THIS^._fBias;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

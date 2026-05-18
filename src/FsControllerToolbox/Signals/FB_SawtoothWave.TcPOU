@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_SawtoothWave" Id="{ff66c4a6-d46b-43fd-a6e7-178bef227337}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Generates a sawtooth wave signal.
+
+The output rises linearly from ``-Amplitude`` to ``+Amplitude`` over one full
+cycle then resets instantly, or falls from ``+Amplitude`` to ``-Amplitude``
+depending on :attr:`Direction`. :attr:`Bias` shifts the output vertically.
+
+:attr:`Phase` shifts the wave horizontally in radians. Negative values shift
+in the opposite direction.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`tPeriod`, :attr:`fAmplitude`, :attr:`fBias` and
+   :attr:`fPhase` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_SawtoothWave EXTENDS FB_PeriodicSignal
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_eDirection : E_RampDirection; // Direction of the sawtooth. Rising goes from -Amplitude to +Amplitude, Falling goes from +Amplitude to -Amplitude.
+	{attribute 'hide'}
+	_tTime      : LTIME;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Direction" Id="{2b2506b3-8b32-4ec8-b23b-1ca0cd86e864}">
+      <Declaration><![CDATA[(*
+Gets or sets the direction of the sawtooth.
+
+:attr:`~E_RampDirection.Rising` ramps from ``-Amplitude`` to ``+Amplitude``
+before resetting. :attr:`~E_RampDirection.Falling` is the inverse.
+Changes take effect immediately.
+*)
+PROPERTY Direction : E_RampDirection]]></Declaration>
+      <Get Name="Get" Id="{0389dcaf-4c03-414d-9bd6-20a60674f8ab}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Direction := THIS^._eDirection;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{67bad3d2-55dc-4fe1-8bbb-6a7ab0a7f4a1}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._eDirection := Direction;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{ed0fe761-2057-4634-9690-5dc8c8539dfb}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	tPeriod      : LTIME; // Duration of one full cycle.
+	fAmplitude   : LREAL; // Scales the wave. Output swings between Bias ± Amplitude.
+	fBias        : LREAL; // Shifts the output vertically.
+	fPhase       : LREAL; // Phase offset in radians. Shifts the wave horizontally.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._tPeriod    := tPeriod;
+THIS^._fAmplitude := fAmplitude;
+THIS^._fBias      := fBias;
+THIS^._fPhase     := fPhase;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{675b759a-1a69-4a5b-af87-e8d5281f954e}">
+      <Declaration><![CDATA[(* Restarts the wave from the beginning by resetting the accumulated time to zero. The phase, amplitude, and bias are unaffected. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._tTime := LTIME#0S;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{7a808be1-caf6-42c7-9cdb-ef7b1ec2729f}">
+      <Declaration><![CDATA[(*
+Advances the sawtooth wave by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If the measured cycle
+   time is zero or :attr:`Period` is zero, the method returns early without
+   updating the output.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fT          : LREAL;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fPeriod     : LREAL;
+	fPhaseTime  : LREAL;
+	fCyclePos   : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(THIS^._tPeriod <= LTIME#0S OR NOT fbTaskCycle.HasChanged);
+
+THIS^._tTime := THIS^._tTime + TO_LTIME(LREAL_TO_ULINT(fT * 1.0E9));
+
+fPeriod    := TO_LREAL(THIS^._tPeriod) / TO_LREAL(LTIME#1S);
+fPhaseTime := TO_LREAL(THIS^._tTime) / TO_LREAL(LTIME#1S) + (THIS^._fPhase / (2.0 * Tc2_System.PI)) * fPeriod;
+fCyclePos  := Tc2_Math.LMOD(fPhaseTime, fPeriod) / fPeriod;
+
+CASE THIS^._eDirection OF
+	E_RampDirection.Rising:
+		THIS^._fOutput := THIS^._fAmplitude * (2.0 * fCyclePos - 1.0) + THIS^._fBias;
+	E_RampDirection.Falling:
+		THIS^._fOutput := THIS^._fAmplitude * (1.0 - 2.0 * fCyclePos) + THIS^._fBias;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

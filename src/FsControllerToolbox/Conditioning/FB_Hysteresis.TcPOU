@@ -1,0 +1,146 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_Hysteresis" Id="{40258db9-41a4-483c-aee3-1b7628b96c1a}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Implements a hysteresis controller with two thresholds and latching behaviour.
+
+The output switches low when the input rises above :attr:`UpperThreshold` and
+switches high when the input falls below :attr:`LowerThreshold`. Between the
+two thresholds the output latches at its current state.
+
+This convention suits heating applications, the output drives a heater that
+turns on when the process falls below the lower threshold and off when it
+exceeds the upper threshold.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fUpperThreshold` and :attr:`fLowerThreshold`
+   at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_Hysteresis EXTENDS FB_SiComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fUpperThreshold : LREAL; // Input level above which the output switches low.
+	_fLowerThreshold : LREAL; // Input level below which the output switches high.
+	_bOutput         : BOOL;  // Current output state.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{e0b6e444-a566-47d8-abc9-65922d9e9c99}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains 	 : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode 	 : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fUpperThreshold  : LREAL; // Input level above which the output switches low.
+	fLowerThreshold  : LREAL; // Input level below which the output switches high.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fUpperThreshold := fUpperThreshold;
+THIS^._fLowerThreshold := fLowerThreshold;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="LowerThreshold" Id="{afaab16d-193c-40e4-a5ae-f8658a2cbb96}">
+      <Declaration><![CDATA[(*
+Gets or sets the lower threshold.
+
+When the input falls below this value the output switches high. Must be less
+than :attr:`UpperThreshold` for correct operation.
+*)
+PROPERTY LowerThreshold : LREAL]]></Declaration>
+      <Get Name="Get" Id="{12345aab-be41-431c-8202-ad7d4297005b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[LowerThreshold := THIS^._fLowerThreshold;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{c0c48c9b-224d-4fdf-b534-6c1b20552774}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fLowerThreshold := LowerThreshold;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Output" Id="{46e484a2-acbf-457a-87ed-37f376fdf27d}">
+      <Declaration><![CDATA[(*
+Gets the current output state. 
+
+TRUE when the process is below :attr:`LowerThreshold`.
+FALSE when above :attr:`UpperThreshold`.
+*)
+PROPERTY Output : BOOL]]></Declaration>
+      <Get Name="Get" Id="{6ef56910-0d72-462b-b695-fad3fe06bfbe}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Output := THIS^._bOutput;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Reset" Id="{5abd729b-56f3-4eb8-9e31-0d03ef31ec2e}">
+      <Declaration><![CDATA[(*
+Evaluates the current input against the thresholds and sets the output immediately,
+rather than waiting for the input to cross a threshold.
+
+If the input is above :attr:`UpperThreshold` the output is set low. If below
+:attr:`LowerThreshold` the output is set high. If between the two thresholds
+the output defaults to low as a safe state.
+*)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._bOutput := THIS^._fInput < THIS^._fLowerThreshold;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{ca31e4a8-2219-43c6-a938-1e210fc3ac2d}">
+      <Declaration><![CDATA[(* Evaluates the input against the thresholds and updates the output. *)
+METHOD Run
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF THIS^._fInput > THIS^._fUpperThreshold THEN
+	THIS^._bOutput := FALSE;
+ELSIF THIS^._fInput < THIS^._fLowerThreshold THEN
+	THIS^._bOutput := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="UpperThreshold" Id="{8a2572e4-0c3e-4ceb-812f-2a061e9aedff}">
+      <Declaration><![CDATA[(*
+Gets or sets the upper threshold.
+
+When the input rises above this value the output switches low. Must be greater
+than :attr:`LowerThreshold` for correct operation.
+*)
+PROPERTY UpperThreshold : LREAL]]></Declaration>
+      <Get Name="Get" Id="{c16d8d97-fa42-448b-8eff-0df9f6fe1508}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[UpperThreshold := THIS^._fUpperThreshold;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{36d83e02-c004-4026-8639-90dab9e191b2}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fUpperThreshold := UpperThreshold;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

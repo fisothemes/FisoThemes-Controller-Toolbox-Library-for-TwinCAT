@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_ProportionalGain" Id="{f4e94057-106e-44fe-9995-46c1594bc616}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Applies a proportional gain to the input error signal.
+
+The output is computed as:
+
+.. math::
+
+   y = K_p \cdot e
+
+where :math:`K_p` is :attr:`Kp` and :math:`e` is the error signal set via :attr:`Input`.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fKp` at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_ProportionalGain EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fKp : LREAL; // Proportional gain.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{714260c1-d62f-41d3-95be-cc1e94d24acb}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fKp          : LREAL; // Proportional gain.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fKp := fKp;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Kp" Id="{d122d2da-7e86-4131-a482-ad9b61c7289e}">
+      <Declaration><![CDATA[(*
+Gets or sets the proportional gain.
+
+A higher value produces a stronger response to error but may cause overshoot.
+A lower value produces a more gradual response. A value of 0 disables the
+proportional term entirely.
+*)
+PROPERTY Kp : LREAL]]></Declaration>
+      <Get Name="Get" Id="{2afa398e-afdc-4f3e-807c-0e864e11c6e7}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Kp := THIS^._fKp;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{6f95b11c-0659-4f62-ad55-cd0a8caa6e39}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fKp := Kp;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{679dc6a1-346d-45b1-93ed-6b50059be251}">
+      <Declaration><![CDATA[(* Sets the output to zero. Takes effect until the next :meth:`Run` call. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{677c166a-7663-4b38-9c3c-fdaafa4f2f7f}">
+      <Declaration><![CDATA[(*
+Computes the proportional output for the current cycle.
+
+.. note::
+   Must be called once per cycle on a single PLC task.
+*)
+METHOD Run
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := THIS^._fKp * THIS^._fInput;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <Itf Name="I_SisoComponent" Id="{d0d754b4-b7d2-49a1-a76f-119a720a55c4}">
+    <Declaration><![CDATA[(*
+Interface for single-input single-output controller toolbox components.
+
+Implementors expose a writable :attr:`Input` and a read-only :attr:`Output`,
+both as ``LREAL``.
+*)
+INTERFACE I_SisoComponent EXTENDS I_Component
+]]></Declaration>
+    <Property Name="Input" Id="{fac8086d-d94f-49ff-a29b-0b3804080a5a}">
+      <Declaration><![CDATA[// Gets or sets the input to the component.
+PROPERTY Input : LREAL]]></Declaration>
+      <Get Name="Get" Id="{bca0112e-91fe-44bf-8e4d-8d6bdaa62a5d}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{9b173d64-a041-4dde-aba8-0314bc3d68e1}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+    <Property Name="Output" Id="{02280395-c00c-4c0c-afde-7315f14eecbf}">
+      <Declaration><![CDATA[// Gets the output produced by the component.
+PROPERTY Output : LREAL]]></Declaration>
+      <Get Name="Get" Id="{7b20950d-35ea-4524-8277-0c813fee378f}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+  </Itf>
+</TcPlcObject>

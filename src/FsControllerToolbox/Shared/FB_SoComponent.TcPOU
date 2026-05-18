@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_SoComponent" Id="{7774e884-2714-4fe5-a937-638b58c17de5}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Abstract function block providing an :attr:`Output` property for single-output
+controller toolbox components.
+
+Concrete implementations must call this block cyclically and write their
+result to ``_fOutput``.
+
+.. note::
+   Direct calls to this function block are not permitted (``no_explicit_call``).
+   Extend it and call the derived block instead.
+*)
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK ABSTRACT FB_SoComponent
+IMPLEMENTS I_SoComponent
+VAR
+	_fOutput : LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Output" Id="{80d906d0-0adf-49e0-aa1c-0ec82bee1545}">
+      <Declaration><![CDATA[(* Gets the output produced by the component.*)
+PROPERTY Output : LREAL
+]]></Declaration>
+      <Get Name="Get" Id="{7b4badde-b872-4a2b-890d-c648dd760d73}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Output := THIS^._fOutput;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+  </POU>
+</TcPlcObject>

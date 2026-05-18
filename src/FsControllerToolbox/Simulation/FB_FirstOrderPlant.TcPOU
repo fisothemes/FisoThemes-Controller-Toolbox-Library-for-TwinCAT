@@ -1,0 +1,154 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_FirstOrderPlant" Id="{9e038570-a2d4-4f40-8389-553745cddcff}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Simulates a first-order linear plant using Euler's backward (implicit) discretisation.
+
+The continuous-time transfer function is:
+
+.. math::
+
+   G(s) = \frac{K}{\tau s + 1}
+
+which discretises to:
+
+.. math::
+
+   y[k] = \frac{\tau \cdot y[k-1] + K \cdot \Delta t \cdot u[k]}{\tau + \Delta t}
+
+where :math:`K` is :attr:`Gain`, :math:`\tau` is :attr:`Tau` in seconds, and
+:math:`\Delta t` is the task cycle time, measured automatically on the first call.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fGain` and :attr:`fTau` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_FirstOrderPlant EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fGain 	: LREAL; // Steady-state gain (K). Ratio of output to input once the plant has fully settled.
+	_tTau 	: LTIME; // Time constant (τ). Time for the step response to reach 63.2% of its final value.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{eb7edcf0-73b8-4f84-a96a-11dd28f071c8}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains 	: BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode 	: BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fGain 			: LREAL; // Steady-state gain (K). Ratio of output to input once the plant has fully settled.
+	tTau 			: LTIME; // Time constant (τ). Time for the step response to reach 63.2% of its final value.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fGain := fGain;
+THIS^._tTau  := tTau;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Gain" Id="{c9c6e5d4-ce13-4f64-8095-a3ceb9abc8f4}">
+      <Declaration><![CDATA[(*
+Gets or sets the steady-state gain.
+
+This is the factor by which a constant input is scaled to produce the output once
+the plant has fully settled. For example, a gain of 2 with a constant input of 5
+will eventually produce an output of 10.
+*)
+PROPERTY Gain : LREAL]]></Declaration>
+      <Get Name="Get" Id="{f88297ae-3068-4a9b-9c45-174f7d963f49}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Gain := THIS^._fGain;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{01ea7ad7-64cc-44bf-9c5f-d77d55e7fda9}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fGain := Gain;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{30efde24-81d5-4b25-ab87-5f7e818dbca2}">
+      <Declaration><![CDATA[(* Sets the output to zero, returning the plant to its initial state. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{5d5c1beb-34af-4f95-baa0-caaf97d44f89}">
+      <Declaration><![CDATA[(*
+Advances the plant by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. This is because on the 
+   first call, the cycle time is measured and stored for use in all subsequent calls. 
+ 
+   If the measured cycle time is zero the method returns early without updating 
+   the output, guarding against a divide-by-zero.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit 	: BOOL := TRUE;
+	{attribute 'hide'}
+	fDt			: LREAL;
+	{attribute 'hide'}
+	fbTaskCycle :  FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fTau 		: LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fDt := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fDt <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(NOT fbTaskCycle.HasChanged);
+
+fTau := TO_LREAL(THIS^._tTau) / TO_LREAL(LTIME#1S);
+
+THIS^._fOutput := 
+	(fTau * THIS^._fOutput + THIS^._fGain * fDt * THIS^._fInput) 
+	/ 
+	(fTau + fDt);]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Tau" Id="{d0686c9d-5b86-4fd9-9b37-7838928eda91}">
+      <Declaration><![CDATA[(* 
+Gets or sets the time constant (τ).
+
+This controls how quickly the plant responds to a change in input. 
+A larger value means a slower response. It is the time taken for the 
+output to reach 63.2% of its final value after a step change in input.
+*)
+PROPERTY Tau : LTIME]]></Declaration>
+      <Get Name="Get" Id="{486eb0e6-0fb6-43c5-bfd1-86c2e09e5d33}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Tau := THIS^._tTau;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{a7680baf-0f99-4b2e-a110-9055582b0608}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._tTau := Tau;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

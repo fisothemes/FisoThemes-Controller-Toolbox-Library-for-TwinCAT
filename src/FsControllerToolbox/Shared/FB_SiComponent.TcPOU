@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_SiComponent" Id="{af4e3e06-6e07-4751-bb2e-628529d86b2a}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Abstract function block providing an :attr:`Input` property for single-input
+controller toolbox components.
+
+Concrete implementations read from ``_fInput`` to consume the signal written
+by the caller.
+
+.. note::
+   Direct calls to this function block are not permitted (``no_explicit_call``).
+   Extend it and call the derived block instead.
+*)
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK ABSTRACT FB_SiComponent
+IMPLEMENTS I_SiComponent
+VAR
+    _fInput : LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Input" Id="{3fa3a351-fd3a-4829-a136-b7ae0143ce13}">
+      <Declaration><![CDATA[(* Gets or sets the input to the component.*)
+PROPERTY Input : LREAL
+]]></Declaration>
+      <Get Name="Get" Id="{30895f99-b4e4-4b92-8f97-adbaf61238bc}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Input := THIS^._fInput;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{fa1deed6-2ff9-47a7-a459-3445f9fce041}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fInput := Input;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

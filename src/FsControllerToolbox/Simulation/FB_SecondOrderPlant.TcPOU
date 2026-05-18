@@ -1,0 +1,210 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_SecondOrderPlant" Id="{f68984c8-bf35-485e-a7d7-66860e563de0}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Simulates a second-order linear plant using the Tustin (bilinear) discretisation
+with frequency pre-warping to preserve the natural frequency :attr:`Wn` exactly.
+
+The continuous-time transfer function is:
+
+.. math::
+
+   G(s) = \frac{K \omega_n^2}{s^2 + 2 \zeta \omega_n s + \omega_n^2}
+
+where :math:`K` is :attr:`Gain`, :math:`\omega_n` is :attr:`Wn`, and
+:math:`\zeta` is :attr:`Zeta`.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fGain`, :attr:`fWn`, and :attr:`fZeta` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_SecondOrderPlant EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fGain 	: LREAL; // Steady-state gain (K). Ratio of output to input once the plant has fully settled.
+	_fWn 	: LREAL; // Natural frequency, rad/s), sets how fast the plant responds.
+	_fZeta	: LREAL; // Damping ratio. Less than 1 gives overshoot, 1 is critically damped, greater than 1 is overdamped.
+	{attribute 'hide'}
+	_fY1    : LREAL; // y[k-1]
+	{attribute 'hide'}
+    _fY2    : LREAL; // y[k-2]
+	{attribute 'hide'}
+    _fU1    : LREAL; // u[k-1]
+	{attribute 'hide'}
+    _fU2    : LREAL; // u[k-2]
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{d1fd5e3c-d725-4600-9696-22df62f6b6e1}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fGain 		 : LREAL; // Steady-state gain (K). Ratio of output to input once the plant has fully settled.
+	fWn 		 : LREAL; // Natural frequency in rad/s. Controls how fast the plant responds.
+	fZeta 		 : LREAL; // Damping ratio. Less than 1 gives overshoot, 1 is critically damped, greater than 1 is overdamped.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fGain := fGain;
+THIS^._fWn 	 := fWn;
+THIS^._fZeta := fZeta;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Gain" Id="{557c3fd6-6f7f-4816-9f15-36d12c24939a}">
+      <Declaration><![CDATA[(*
+Gets or sets the steady-state gain.
+
+This is the factor by which a constant input is scaled to produce the output once
+the plant has fully settled. For example, a gain of 2 with a constant input of 5
+will eventually produce an output of 10.
+*)
+PROPERTY Gain : LREAL]]></Declaration>
+      <Get Name="Get" Id="{3ee36bff-ee81-4e03-9bcc-204f614c8130}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Gain := THIS^._fGain;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{ef2f0f2e-ff35-48cb-93f0-55ab48b2322a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fGain := Gain;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{c1489380-f2dc-4440-b8c3-91592af26732}">
+      <Declaration><![CDATA[(* Sets the output and all internal state to zero, returning the plant to its initial conditions. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := 0;
+THIS^._fY1     := 0;
+THIS^._fY2     := 0;
+THIS^._fU1     := 0;
+THIS^._fU2     := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{ff11495a-862a-49a3-9e2c-18f03012627d}">
+      <Declaration><![CDATA[(*
+Advances the plant by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. This is because on the 
+   first call, the cycle time is measured and stored for use in all subsequent calls. 
+ 
+   If the cycle time is zero or :attr:`Wn` is zero, the method returns early 
+   without updating the output.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit 		 	: BOOL := TRUE;
+	{attribute 'hide'}
+	fT				 	: LREAL;
+	{attribute 'hide'}
+	fbTaskCycle 		:  FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fWd, fWd2, fT2, fDen  : LREAL;
+    fA1, fA2         : LREAL;
+    fB0, fB1, fB2    : LREAL;
+    fY               : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+	END_IF
+
+RETURN(THIS^._fWn <= 0 OR NOT fbTaskCycle.HasChanged);
+
+// Pre-warp natural frequency to preserve Wn exactly under Tustin
+fWd  := (2.0 / fT) * TAN(THIS^._fWn * fT / 2.0);
+fWd2 := fWd * fWd;
+fT2  := fT * fT;
+fDen := (4.0 / fT2) + 2.0 * THIS^._fZeta * fWd * (2.0 / fT) + fWd2;
+
+fB0 := (THIS^._fGain * fWd2) / fDen;
+fB1 := (2.0 * THIS^._fGain * fWd2) / fDen;
+fB2 := fB0;
+
+fA1 := ((-8.0 / fT2) + 2.0 * fWd2) / fDen;
+fA2 := ((4.0 / fT2) - 2.0 * THIS^._fZeta * fWd * (2.0 / fT) + fWd2) / fDen;
+
+fY := fB0 * THIS^._fInput + fB1 * THIS^._fU1 + fB2 * THIS^._fU2
+       - fA1 * THIS^._fOutput - fA2 * THIS^._fY1;
+
+THIS^._fY2      := THIS^._fY1;
+THIS^._fY1      := THIS^._fOutput;
+THIS^._fU2      := THIS^._fU1;
+THIS^._fU1      := THIS^._fInput;
+THIS^._fOutput 	:= fY;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Wn" Id="{b4a1c18c-9295-43af-9385-ee9739b301b0}">
+      <Declaration><![CDATA[(*
+Gets or sets the natural frequency in rad/s.
+
+This controls the speed of the plant's response. 
+A higher value means a faster response. To convert from Hz, multiply by 2π.
+*)
+PROPERTY Wn : LREAL]]></Declaration>
+      <Get Name="Get" Id="{b7ac1a40-b9a6-456d-bdc5-3f343cc95b82}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Wn := THIS^._fWn;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{52c7533b-d68a-4ff5-a6f8-7c46c793aae2}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fWn := Wn;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Zeta" Id="{e3402953-e973-4a8f-8561-eff7bb0e33b2}">
+      <Declaration><![CDATA[(* 
+Gets or sets the damping ratio.
+
+This controls the shape of the response.
+  - A value below 1 produces an oscillating response that overshoots before settling. 
+  - A value of exactly 1 (critically damped) settles as fast as possible without any overshoot.
+  - A value above 1 settles more slowly with no overshoot.
+*)
+PROPERTY Zeta : LREAL]]></Declaration>
+      <Get Name="Get" Id="{6066bebe-9c4b-4bee-a789-8a8adae02a2a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Zeta := THIS^._fZeta;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{57b4b6b5-137b-44f8-874c-4a2c46ed9002}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fZeta := Zeta;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

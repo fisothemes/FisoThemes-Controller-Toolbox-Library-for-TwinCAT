@@ -1,0 +1,172 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_PWM" Id="{4dd6aa81-9a6a-42a0-a360-12d3916589b2}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Generates a pulse-width modulated (PWM) signal.
+
+The output switches between ``Amplitude`` and ``0`` at a fixed :attr:`Period`.
+:attr:`DutyCycle` controls the proportion of the period the output is high,
+as a value between -1 and 1.
+
+For example, a duty cycle of 0.3 produces a high output for 30% of the period
+and a low output for the remaining 70%. A duty cycle of -0.3 inverts this,
+producing a low output for 30% and a high output for 70%.
+
+A duty cycle of 0 keeps the output permanently low. A duty cycle of ±1 keeps
+it permanently high.
+
+:attr:`Phase` shifts the wave horizontally in radians. Negative values shift
+in the opposite direction.
+:attr:`Bias` shifts the output vertically.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`tPeriod`, :attr:`fAmplitude`, :attr:`fBias`,
+   and :attr:`fDutyCycle` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_PWM EXTENDS FB_PeriodicSignal
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fDutyCycle : LREAL; // Proportion of the period the output is high. Clamped to -1..1. Negative values invert the wave.
+	_bIsHigh    : BOOL;  // TRUE when the output is in its high state, regardless of amplitude, bias, or phase.
+	{attribute 'hide'}
+	_tTime      : LTIME;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="DutyCycle" Id="{9e6c5499-4034-4c7d-991f-607adf130abc}">
+      <Declaration><![CDATA[(*
+Gets or sets the duty cycle as a value between -1 and 1.
+
+This controls the proportion of the period the output is high. A value of 0.3
+keeps the output high for 30% of the period. A negative value inverts the wave —
+-0.3 keeps the output low for 30% and high for the remaining 70%. Values outside
+-1..1 are clamped. Changes take effect immediately.
+*)
+PROPERTY DutyCycle : LREAL]]></Declaration>
+      <Get Name="Get" Id="{3042aa17-f208-4af9-9f3f-0fd361ab1507}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[DutyCycle := THIS^._fDutyCycle;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{442f88f3-3a0f-4860-9749-817097d5d0f2}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fDutyCycle := LIMIT(-1, DutyCycle, 1);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{2f18fc94-e655-4b1a-96a2-7271212d8e9e}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	tPeriod      : LTIME; // Duration of one full cycle.
+	fAmplitude   : LREAL; // High-state output level. Low state is always 0.
+	fBias        : LREAL; // Shifts the output vertically.
+	fDutyCycle   : LREAL; // Proportion of the period the output is high. Clamped to -1..1.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._tPeriod    := tPeriod;
+THIS^._fAmplitude := fAmplitude;
+THIS^._fBias      := fBias;
+THIS^._fDutyCycle := LIMIT(-1.0, fDutyCycle, 1.0);]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="IsHigh" Id="{1e62bf2c-5f97-47fc-b9fc-9beb6c921848}">
+      <Declaration><![CDATA[(*
+Gets whether the output is currently in its high state.
+
+TRUE regardless of the values of :attr:`Amplitude`, :attr:`Bias`, or :attr:`Phase`.
+*)
+PROPERTY IsHigh  : BOOL]]></Declaration>
+      <Get Name="Get" Id="{d17db29d-10f1-4ae7-b530-27998e6a2d77}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[IsHigh := THIS^._bIsHigh;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Reset" Id="{670b6467-5984-4e88-bfae-9f86d8260872}">
+      <Declaration><![CDATA[(* 
+Restarts the wave from the beginning by resetting the accumulated time to zero.
+The duty cycle, phase, amplitude, and bias are unaffected.
+*)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._tTime  := LTIME#0S;
+THIS^._bIsHigh := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{625a62d4-8e10-4206-8003-53ce87d2cf50}">
+      <Declaration><![CDATA[(*
+Advances the PWM signal by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If the measured cycle
+   time is zero or :attr:`Period` is zero, the method returns early without
+   updating the output.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fT          : LREAL;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fPeriod    : LREAL;
+	fPhaseTime : LREAL;
+	fCyclePos  : LREAL;
+	fDuty      : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(THIS^._tPeriod <= LTIME#0S OR NOT fbTaskCycle.HasChanged);
+
+THIS^._tTime := THIS^._tTime + TO_LTIME(LREAL_TO_ULINT(fT * 1.0E9));
+
+fPeriod    := TO_LREAL(THIS^._tPeriod) / TO_LREAL(LTIME#1S);
+fPhaseTime := TO_LREAL(THIS^._tTime) / TO_LREAL(LTIME#1S) + (THIS^._fPhase / (2.0 * Tc2_System.PI)) * fPeriod;
+fCyclePos  := Tc2_Math.LMOD(fPhaseTime, fPeriod) / fPeriod;
+
+THIS^._fDutyCycle := LIMIT(-1, THIS^._fDutyCycle, 1);
+
+fDuty := ABS(THIS^._fDutyCycle);
+
+IF THIS^._fDutyCycle >= 0.0 THEN
+	THIS^._bIsHigh := fCyclePos < fDuty;
+ELSE
+	THIS^._bIsHigh := fCyclePos >= (1.0 - fDuty);
+END_IF
+
+IF THIS^._bIsHigh THEN
+	THIS^._fOutput := THIS^._fAmplitude + THIS^._fBias;
+ELSE
+	THIS^._fOutput := THIS^._fBias;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

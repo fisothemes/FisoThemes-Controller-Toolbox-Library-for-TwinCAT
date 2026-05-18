@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <Itf Name="I_Resettable" Id="{ab5914ee-8b82-4d90-a04f-4fe8555aca42}">
+    <Declaration><![CDATA[(*
+Interface for components that can be returned to a known initial state.
+
+Implementors must define :meth:`Reset` to clear any internal state, such as
+accumulators, filter history, or elapsed time, and restore the output to its
+initial condition.
+*)
+INTERFACE I_Resettable EXTENDS __SYSTEM.IQueryInterface
+]]></Declaration>
+    <Method Name="Reset" Id="{b7f6a5e4-6d73-4a58-a83e-a8644bfdc1ce}">
+      <Declaration><![CDATA[(* Clears internal state and restores the component to its initial condition. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <Itf Name="I_Component" Id="{2906025a-fa25-4a72-827e-2d345efa1901}">
+    <Declaration><![CDATA[(*
+Base interface for all FsControllerToolbox components.
+
+Extends ``__SYSTEM.IQueryInterface`` to allow runtime type checking via
+``__QUERYINTERFACE``.
+*)
+INTERFACE I_Component EXTENDS __SYSTEM.IQueryInterface
+]]></Declaration>
+  </Itf>
+</TcPlcObject>

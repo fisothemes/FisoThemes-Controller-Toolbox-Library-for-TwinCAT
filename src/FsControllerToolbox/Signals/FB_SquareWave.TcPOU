@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_SquareWave" Id="{6898a862-8aff-4c3e-b388-7b3be5d99378}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Generates a square wave signal.
+
+The raw wave alternates between ``+1`` and ``-1`` over one period. :attr:`Amplitude`
+scales the wave and :attr:`Bias` shifts it vertically, giving an output that swings
+between ``Bias + Amplitude`` and ``Bias - Amplitude``.
+
+:attr:`Phase` shifts the wave horizontally in radians. A phase of π starts the
+wave in its low half-cycle, a phase of -π has the same effect.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`tPeriod`, :attr:`fAmplitude`, :attr:`fBias`,
+   and :attr:`fPhase` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_SquareWave EXTENDS FB_PeriodicSignal
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	{attribute 'hide'}
+	_tTime : LTIME; // Accumulated time.
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{c7321f69-f46a-402c-a08b-a2cdea402571}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	tPeriod      : LTIME; // Duration of one full cycle.
+	fAmplitude   : LREAL; // Scales the ±1 wave. Output swings between Bias ± Amplitude.
+	fBias        : LREAL; // Shifts the output up or down by a fixed value.
+	fPhase       : LREAL; // Phase offset in radians. Shifts the wave horizontally. Negative values shift in the opposite direction.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._tPeriod    := tPeriod;
+THIS^._fAmplitude := fAmplitude;
+THIS^._fBias      := fBias;
+THIS^._fPhase     := fPhase;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{6fddd15e-1fbc-4a2f-8e09-3301229d5799}">
+      <Declaration><![CDATA[(* Restarts the wave from the beginning by resetting the accumulated time to zero. The phase, amplitude, and bias are unaffected. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._tTime := LTIME#0S;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{4df4077e-83d7-4165-bda8-8a9645689909}">
+      <Declaration><![CDATA[(*
+Advances the square wave by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If the measured cycle
+   time is zero or :attr:`Period` is zero, the method returns early without
+   updating the output.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit 		 : BOOL := TRUE;
+	{attribute 'hide'}
+	tT           : LTIME;
+	{attribute 'hide'}
+	fbTaskCycle  :  FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fCyclePhase  : LREAL;
+	fPeriod		 : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	tT := FsCommon.F_GetCurrentTaskCycleTime();
+	RETURN(bInit := tT = LTIME#0S);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(THIS^._tPeriod <= LTIME#0S OR NOT fbTaskCycle.HasChanged);
+
+THIS^._tTime := THIS^._tTime + tT;
+
+fPeriod := TO_LREAL(THIS^._tPeriod) / TO_LREAL(LTIME#1S);
+
+fCyclePhase := Tc2_Math.LMOD(
+	(TO_LREAL(THIS^._tTime) / TO_LREAL(LTIME#1S)) + ((THIS^._fPhase / (2.0 * Tc2_System.PI)) * fPeriod), 
+	fPeriod
+) / fPeriod;
+
+IF fCyclePhase < 0.5 THEN
+	THIS^._fOutput :=  THIS^._fAmplitude + THIS^._fBias;
+ELSE
+	THIS^._fOutput := -THIS^._fAmplitude + THIS^._fBias;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

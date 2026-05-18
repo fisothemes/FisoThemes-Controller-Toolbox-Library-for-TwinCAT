@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <Itf Name="I_SiComponent" Id="{7b82b91b-5b8f-4dcd-819c-0b83277c0b7a}">
+    <Declaration><![CDATA[(*
+Interface for single-input controller toolbox components.
+
+Implementors expose a write-only :attr:`Input` property. For components that
+also produce an output signal, use :itf:`I_SisoComponent` instead.
+*)
+INTERFACE I_SiComponent
+]]></Declaration>
+    <Property Name="Input" Id="{687bf238-d9f7-4936-86a3-5ac32e13df89}">
+      <Declaration><![CDATA[// Gets or sets the input to the component.
+PROPERTY Input : LREAL]]></Declaration>
+      <Get Name="Get" Id="{654a203d-7616-4acf-a31d-2390624e1a0a}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{1ea30284-7813-46aa-bda5-7ff17b13e590}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+  </Itf>
+</TcPlcObject>

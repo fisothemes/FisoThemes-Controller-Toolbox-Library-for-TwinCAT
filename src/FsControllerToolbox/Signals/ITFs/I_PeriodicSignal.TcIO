@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <Itf Name="I_PeriodicSignal" Id="{c5233999-bce7-485e-a596-83277aad44dc}">
+    <Declaration><![CDATA[(*
+Base interface for periodic signal generators.
+
+Implementors produce a cyclic output defined by :attr:`Period`, :attr:`Amplitude`,
+:attr:`Bias`, and :attr:`Phase`.
+*)
+INTERFACE I_PeriodicSignal EXTENDS I_SoComponent
+]]></Declaration>
+    <Property Name="Amplitude" Id="{33baeb43-db8f-4932-b68e-c762f7eef8d4}">
+      <Declaration><![CDATA[(*
+Gets or sets the amplitude. 
+
+The output swings between ``Bias + Amplitude`` and ``Bias - Amplitude``.
+*)
+PROPERTY Amplitude : LREAL]]></Declaration>
+      <Get Name="Get" Id="{c5486ab0-bd60-4158-9abb-919192c9d46b}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{9885df1a-6811-4eb3-80a2-da19daea1eb3}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+    <Property Name="Bias" Id="{7ac054e3-12c0-4e51-a4ab-f06f4ed36233}">
+      <Declaration><![CDATA[(*
+Gets or sets the bias.
+
+This is a fixed offset added to the output, shifting the wave up or down.
+*)
+PROPERTY Bias : LREAL]]></Declaration>
+      <Get Name="Get" Id="{10fcf534-4ab6-4931-adec-343a2c2a0c95}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{9e2ab02f-7638-4de9-afe3-88fb5663171e}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+    <Property Name="Period" Id="{bfd4879a-96be-4ddc-ae51-867cc76d1508}">
+      <Declaration><![CDATA[(* 
+Gets or sets the period. 
+
+This is the time taken to complete one full cycle.
+*)
+PROPERTY Period : LTIME]]></Declaration>
+      <Get Name="Get" Id="{8a73769e-71fe-4cf2-848d-f0f644eaf3e8}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{cef49fc0-a9e1-4389-b7b6-ff075b323a14}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+    <Property Name="Phase" Id="{5c83886b-2edf-4755-99f1-736294bb1c30}">
+      <Declaration><![CDATA[(*
+Gets or sets the phase offset in radians.
+
+This shifts the wave horizontally. Negative values shift in the opposite direction.
+*)
+PROPERTY Phase : LREAL]]></Declaration>
+      <Get Name="Get" Id="{8631be56-77d3-4aa2-ab2d-03fb4cc11751}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{dbee00d2-ab07-457b-a6c2-6513eea8f6c9}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+  </Itf>
+</TcPlcObject>

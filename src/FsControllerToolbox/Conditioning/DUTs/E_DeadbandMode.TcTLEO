@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <EnumerationTextList Name="E_DeadbandMode" Id="{ff38a950-19ce-45a1-840d-1906b15948ac}">
+    <Declaration><![CDATA[(*
+Specifies the behaviour of :itf:`FB_Deadband` when the input is within the band.
+*)
+{attribute 'qualified_only'}
+{attribute 'strict'}
+{attrubute 'to_string'}
+TYPE E_DeadbandMode :
+(
+	Hold := 0, // Output holds its last value while the input is within the band.
+	Zero := 1  // Output is set to zero while the input is within the band.
+)BYTE;
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"Hold"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Zero"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{eec0697e-7126-4714-b22c-92ccf2021c11}</v>
+          <v n="GuidReInit">{dc86cafa-d687-4f11-a4a3-632b66eb710a}</v>
+          <v n="GuidExitX">{a6185bf4-fd95-4a7c-b9fd-bedaea2c5888}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

@@ -1,0 +1,190 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_Differentiator" Id="{3e489be9-b8e3-4618-8b24-7d6cab617182}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Differentiates the input signal with an optional first-order damping filter.
+
+The transfer function is:
+
+.. math::
+
+   D(s) = \frac{T_v \cdot s}{T_d \cdot s + 1}
+
+where :math:`T_v` is :attr:`Tv` and :math:`T_d` is :attr:`Td`. The filter is
+discretised using the Tustin (bilinear) method.
+
+Setting :attr:`Tv` to ``LTIME#0`` disables the derivative term entirely.
+Setting :attr:`Td` to ``LTIME#0`` removes the damping filter, giving a pure
+derivative. This is not recommended in practice due to noise sensitivity.
+
+.. note::
+   If derivative kick on setpoint steps is undesirable, pass the negated
+   process variable as :attr:`Input` rather than the full error. The integrator
+   should still receive the full error signal.
+
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`tTv` and :attr:`tTd` at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_Differentiator EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_tTv          : LTIME; // Rate time (Tv). Determines derivative action strength.
+	_tTd          : LTIME; // Damping time (Td). Filters the derivative signal to reduce noise sensitivity.
+	_fPrevInput   : LREAL; // Input from the previous cycle.
+	_fFilterState : LREAL; // Internal state of the damping filter.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{3f2453d5-4cb4-46cb-893d-22b8f45e7c97}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	tTv          : LTIME; // Rate time. T#0S disables the derivative term entirely.
+	tTd          : LTIME; // Damping time. LTIME#0 means no filtering (pure derivative).
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._tTv := tTv;
+THIS^._tTd := tTd;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{dd893170-300d-401a-b157-b3f80bde8661}">
+      <Declaration><![CDATA[(*
+Clears the filter state and output. 
+Sets the previous input to the current input to avoid a spike on the next :meth:`Run` call. 
+*)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fFilterState := 0;
+THIS^._fPrevInput   := THIS^._fInput;
+THIS^._fOutput      := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{bffbfdbb-b922-4931-ad38-542fc8d8e21f}">
+      <Declaration><![CDATA[(*
+Advances the differentiator by one time step.
+
+On the first call the cycle time is measured, the filter state is initialised,
+and the method returns early without producing an output. This prevents a spike
+caused by an uninitialised previous input.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If :attr:`Tv` is
+   ``LTIME#0`` the output is held at zero.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fT          : LREAL;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fTv            : LREAL;
+	fTd            : LREAL;
+	fDen           : LREAL;
+	fAlpha         : LREAL;
+	fRawDerivative : LREAL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+	THIS^._fPrevInput     := THIS^._fInput;
+	THIS^._fFilterState   := 0;
+	RETURN;
+END_IF
+
+RETURN(NOT fbTaskCycle.HasChanged);
+
+IF THIS^._tTv = LTIME#0S THEN
+	THIS^._fOutput    := 0;
+	THIS^._fPrevInput := THIS^._fInput;
+	RETURN;
+END_IF
+
+fTv := TO_LREAL(THIS^._tTv) / TO_LREAL(LTIME#1S);
+fTd := TO_LREAL(THIS^._tTd) / TO_LREAL(LTIME#1S);
+
+fRawDerivative := fTv * (THIS^._fInput - THIS^._fPrevInput) / fT;
+
+IF THIS^._tTd = LTIME#0S THEN
+	THIS^._fOutput := fRawDerivative;
+ELSE
+	fDen                := fTd + fT / 2.0;
+	fAlpha              := (fTd - fT / 2.0) / fDen;
+	THIS^._fFilterState := fAlpha * THIS^._fFilterState + (1.0 - fAlpha) * fRawDerivative;
+	THIS^._fOutput      := THIS^._fFilterState;
+END_IF
+
+THIS^._fPrevInput := THIS^._fInput;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Td" Id="{f52d2307-4921-4699-8f45-9c2175eefb93}">
+      <Declaration><![CDATA[(*
+Gets or sets the damping time (Td).
+
+This filters the derivative signal to reduce sensitivity to noise. A longer
+value gives more filtering but reduces derivative effectiveness. Setting it
+to ``LTIME#0`` removes the filter entirely, giving a pure derivative (not
+recommended in practice due to noise sensitivity).
+*)
+PROPERTY Td : LTIME]]></Declaration>
+      <Get Name="Get" Id="{da05ebd0-7936-48ef-a50a-b7f2b3b25de0}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Td := THIS^._tTd;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{536d5745-5640-41de-b2e7-df96401f19c8}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._tTd := Td;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Tv" Id="{01eba1fd-7eaf-461b-8015-b12d9485e92c}">
+      <Declaration><![CDATA[(*
+Gets or sets the rate time (Tv).
+
+This controls how strongly the block reacts to changes in the input. A longer
+value increases derivative action. Setting it to ``LTIME#0`` disables the
+derivative term entirely, holding the output at zero.
+*)
+PROPERTY Tv : LTIME]]></Declaration>
+      <Get Name="Get" Id="{de4b32a4-2a93-4a79-b532-e2020ab504bb}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Tv := THIS^._tTv;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{79b86861-772a-4eea-bb6d-e6ef673bc5ef}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._tTv := Tv;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

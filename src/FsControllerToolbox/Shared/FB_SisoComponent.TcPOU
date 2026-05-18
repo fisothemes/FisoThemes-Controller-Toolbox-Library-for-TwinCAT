@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_SisoComponent" Id="{a0e40df2-e1ed-489e-8d06-0755746c7702}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Abstract function block providing :attr:`Input` and :attr:`Output` properties
+for single-input single-output controller toolbox components.
+
+.. NOTE::
+   Direct calls to this function block are not permitted (``no_explicit_call``).
+*)
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK ABSTRACT FB_SisoComponent
+IMPLEMENTS I_SisoComponent, I_SiComponent, I_SoComponent
+VAR
+	_fInput 	: LREAL;
+	_fOutput 	: LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Input" Id="{30525369-71c8-4100-bbd1-f8e59049c8a7}">
+      <Declaration><![CDATA[(* Gets or sets the input to the component.*)
+PROPERTY Input : LREAL
+]]></Declaration>
+      <Get Name="Get" Id="{9c2fc99e-a63e-4e88-842a-1f5f7df06cb4}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Input := THIS^._fInput;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{6f0a741b-c41d-49c5-a8be-c5e9484b2132}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fInput := Input;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Output" Id="{987dd6e2-1249-4c21-a82c-fe2e8d2998dd}">
+      <Declaration><![CDATA[(* Gets the output produced by the component.*)
+PROPERTY Output : LREAL
+]]></Declaration>
+      <Get Name="Get" Id="{cec3fda0-ae12-4a85-a1bd-776564baf4e3}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Output := THIS^._fOutput;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+  </POU>
+</TcPlcObject>

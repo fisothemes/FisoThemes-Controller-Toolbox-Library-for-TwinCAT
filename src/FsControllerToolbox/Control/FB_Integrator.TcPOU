@@ -1,0 +1,313 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_Integrator" Id="{47ffbc2a-3ed9-4e5a-91d9-e67797ca9991}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Integrates the input error signal over time.
+
+The output accumulates the input scaled by the integral gain :math:`K_i = 1 / T_n`,
+and is clamped to [:attr:`Minimum`, :attr:`Maximum`] on every cycle. Two anti-windup
+strategies are available via :attr:`AntiWindupMethod`.
+
+Setting :attr:`Tn` to ``LTIME#0`` disables integration, holding the output at
+its current integrator state.
+
+.. note::
+   Set :attr:`Maximum` before :attr:`Minimum` to ensure the clamp is applied
+   correctly. Setting :attr:`Minimum` first may cause it to be clamped against
+   an uninitialised :attr:`Maximum`.
+
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`tTn`, :attr:`fMaximum`, :attr:`fMinimum`,
+   :attr:`eAntiWindupMethod`, and :attr:`tTrackingTimeConstant` at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_Integrator EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_tTn                   : LTIME; // Integral action time (Tn).
+	_fMaximum              : LREAL :=  FsCommon.GVL_TypeValueLimits.LREAL_MAX; // Upper output clamp.
+	_fMinimum              : LREAL :=  FsCommon.GVL_TypeValueLimits.LREAL_MIN; // Lower output clamp.
+	_eAntiWindupMethod     : E_AntiWindupMethod; // Anti-windup strategy.
+	_tTrackingTimeConstant : LTIME; // Tracking time constant (Tt) for back-calculation anti-windup.
+	_fIntegratorState      : LREAL; // Internal integrator accumulator.
+	_bAntiWindupActive     : BOOL;  // TRUE when the output is saturated and anti-windup is limiting integration.
+	_bSync                 : BOOL;  // Triggers a bumpless transfer on the next Run call.
+	_fSync                 : LREAL; // Target integrator state for bumpless transfer.
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="AntiWindupActive" Id="{5bb50fd6-bf10-4a84-a0ab-13ec9db4c58f}">
+      <Declaration><![CDATA[(* Gets whether the output is currently saturated and anti-windup is actively limiting integration. *)
+PROPERTY AntiWindupActive : BOOL]]></Declaration>
+      <Get Name="Get" Id="{c9cc0a2d-dde9-4628-afc3-37215f402fb4}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AntiWindupActive := THIS^._bAntiWindupActive;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="AntiWindupMethod" Id="{d544e865-7b92-4922-9770-5451377e1661}">
+      <Declaration><![CDATA[(*
+Gets or sets the anti-windup strategy.
+
+:attr:`~E_AntiWindupMethod.Clamping` halts integration when the output is
+saturated. :attr:`~E_AntiWindupMethod.BackCalculation` feeds the saturation
+error back into the integrator gradually, which is better suited to slow
+systems with significant lag such as thermal processes.
+*)
+PROPERTY AntiWindupMethod : E_AntiWindupMethod]]></Declaration>
+      <Get Name="Get" Id="{aaeacea9-6af1-4ec1-afea-23a714f3919a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AntiWindupMethod := THIS^._eAntiWindupMethod;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{009111a0-1799-42c2-b312-2d3dbe9d22b9}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._eAntiWindupMethod := AntiWindupMethod;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{8cfec7ca-3283-4544-ada6-15063acb0a65}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains 		  : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode 		  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	tTn                   : LTIME; // Integral action time. LTIME#0 disables integration.
+	fMaximum              : LREAL; // Upper output clamp.
+	fMinimum              : LREAL; // Lower output clamp.
+	eAntiWindupMethod     : E_AntiWindupMethod; // Anti-windup strategy.
+	tTrackingTimeConstant : LTIME; // Tracking time constant for back-calculation anti-windup.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._tTn                   := tTn;
+THIS^.Maximum                := fMaximum;
+THIS^.Minimum                := fMinimum;
+THIS^._eAntiWindupMethod     := eAntiWindupMethod;
+THIS^._tTrackingTimeConstant := tTrackingTimeConstant;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Maximum" Id="{3a497e9a-95e7-4605-a246-dba28f843328}">
+      <Declaration><![CDATA[(*
+Gets or sets the upper output clamp.
+
+The output is clamped to this value on every cycle. Internally clamped to be
+greater than or equal to :attr:`Minimum`. Set this before :attr:`Minimum` to
+ensure the guard applies correctly.
+*)
+PROPERTY Maximum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{59b7306d-3c7c-4d04-9810-a9ac101f9844}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Maximum := THIS^._fMaximum;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{e7dbbd68-4302-4518-950d-c83db497253d}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fMaximum := MAX(THIS^._fMinimum, Maximum);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Minimum" Id="{6365bf49-1532-428d-9bff-2f9a9d59e710}">
+      <Declaration><![CDATA[(*
+Gets or sets the lower output clamp.
+
+The output is clamped to this value on every cycle. Internally clamped to be
+less than or equal to :attr:`Maximum`. Set :attr:`Maximum` before this property
+to ensure the guard applies correctly.
+*)
+PROPERTY Minimum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{fe2faeab-c80c-40c9-82ef-fbbc19b570fd}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Minimum := THIS^._fMinimum;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{4dede34a-7c64-430f-8570-75bdb3cfe2d8}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fMinimum := MIN(THIS^._fMaximum, Minimum);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{3a8a4f07-1842-4766-bff0-f5a3e06396b6}">
+      <Declaration><![CDATA[(* Clears the integrator state, output, and anti-windup flag. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fIntegratorState  := 0;
+THIS^._fOutput           := 0;
+THIS^._bAntiWindupActive := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{2c38f1dc-07ae-408d-aab0-cab417acae8b}">
+      <Declaration><![CDATA[(*
+Advances the integrator by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If :attr:`Tn` is
+   ``LTIME#0`` the output is held at the current integrator state without
+   further integration.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fT          : LREAL;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fKi                   : LREAL;
+	fTt                   : LREAL;
+	fWindupBack           : LREAL;
+	fUnsat                : LREAL;
+	fSaturated            : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+THIS^._fMaximum := MAX(THIS^._fMinimum, THIS^._fMaximum);
+THIS^._fMinimum := MIN(THIS^._fMinimum, THIS^._fMaximum);
+
+RETURN(NOT fbTaskCycle.HasChanged);
+
+// Bumpless transfer, force integrator state before anything else.
+IF FsCommon.F_ResetOnTrue(THIS^._bSync) THEN
+	THIS^._fIntegratorState := LIMIT(THIS^._fMinimum, THIS^._fSync, THIS^._fMaximum);
+END_IF
+
+IF THIS^._tTn = LTIME#0S THEN
+	THIS^._fOutput := THIS^._fIntegratorState;
+	RETURN;
+END_IF
+
+fKi := 1.0 / (TO_LREAL(THIS^._tTn) / TO_LREAL(LTIME#1S));
+
+CASE THIS^._eAntiWindupMethod OF
+	E_AntiWindupMethod.Clamping:
+		IF NOT THIS^._bAntiWindupActive OR
+		   (THIS^._fOutput >= THIS^._fMaximum AND THIS^._fInput < 0) OR
+		   (THIS^._fOutput <= THIS^._fMinimum AND THIS^._fInput > 0) THEN
+			THIS^._fIntegratorState :=
+				THIS^._fIntegratorState + fKi * THIS^._fInput * fT;
+		END_IF
+
+	E_AntiWindupMethod.BackCalculation:
+		fTt := TO_LREAL(THIS^._tTrackingTimeConstant) / TO_LREAL(LTIME#1S);
+		fWindupBack := SEL(
+			fTt > 0,
+			0.0,
+			(THIS^._fOutput - THIS^._fIntegratorState) / fTt);
+		THIS^._fIntegratorState :=
+			THIS^._fIntegratorState + (fKi * THIS^._fInput + fWindupBack) * fT;
+END_CASE
+
+fUnsat                   := THIS^._fIntegratorState;
+fSaturated               := LIMIT(THIS^._fMinimum, fUnsat, THIS^._fMaximum);
+THIS^._bAntiWindupActive := fSaturated <> fUnsat;
+THIS^._fOutput           := fSaturated;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Sync" Id="{6a7ea881-b29e-44a9-b09d-be1f23df6254}">
+      <Declaration><![CDATA[(*
+Forces the integrator state to a given value on the next :meth:`Run` call.
+
+The value is clamped to [:attr:`Minimum`, :attr:`Maximum`] before being applied.
+Use this for bumpless transfer when switching from manual to automatic mode,
+to prevent a sudden jump in output.
+*)
+METHOD Sync
+VAR_INPUT
+	// Target integrator state.
+	fValue : LREAL; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._bSync := TRUE;
+THIS^._fSync := LIMIT(THIS^._fMinimum, fValue, THIS^._fMaximum);]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Tn" Id="{c6558abf-0a44-4a94-9245-c670c16962b5}">
+      <Declaration><![CDATA[(*
+Gets or sets the integral action time (Tn).
+
+This controls how aggressively the integrator responds to sustained error.
+A shorter value increases integral action. Setting it to ``LTIME#0`` disables
+integration entirely, holding the output at the current integrator state.
+*)
+PROPERTY Tn : LTIME]]></Declaration>
+      <Get Name="Get" Id="{bd488e77-81c5-4a4c-b5d0-013b7c69860b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Tn := THIS^._tTn;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{36941e2b-cd0e-4664-b70b-fbd70ba75ced}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._tTn := Tn;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="TrackingTimeConstant" Id="{30a2ffa6-9c73-452e-a04d-bffed2f168b5}">
+      <Declaration><![CDATA[(*
+Gets or sets the tracking time constant (Tt) for back-calculation anti-windup.
+
+This controls how quickly the integrator unwinds after saturation. A typical
+starting value is ``SQRT(Tn * Td)``. Setting it to ``LTIME#0`` disables the
+back-calculation correction. Ignored when :attr:`AntiWindupMethod` is
+:attr:`~E_AntiWindupMethod.Clamping`.
+*)
+PROPERTY TrackingTimeConstant : LTIME]]></Declaration>
+      <Get Name="Get" Id="{10e3e3b8-8602-404e-a9b9-0367326e9d13}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[TrackingTimeConstant := THIS^._tTrackingTimeConstant;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{93cb4571-d0b7-4d19-a230-4ec461bbfab6}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._tTrackingTimeConstant := TrackingTimeConstant;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

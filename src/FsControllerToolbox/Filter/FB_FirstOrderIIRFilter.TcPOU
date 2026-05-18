@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_FirstOrderIIRFilter" Id="{2b4460b7-be3b-4fb7-a2cc-0732a290b122}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Applies an exponential moving average (EMA) to the input signal.
+
+On the first call the output is set to the current input. On subsequent calls:
+
+.. math::
+
+   y[k] = \alpha \cdot u[k] + (1 - \alpha) \cdot y[k-1]
+
+where :math:`\alpha` is :attr:`Alpha`. A value of 0 passes the input through
+unchanged. A value of 1 holds the output at the first input value.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fAlpha` at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_FirstOrderIIRFilter EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fAlpha : LREAL; // Smoothing factor. Clamped to 0..1.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Alpha" Id="{8f02c861-5866-4f19-bb21-eca286703834}">
+      <Declaration><![CDATA[(*
+Gets or sets the smoothing factor.
+
+Controls the balance between the current input and the previous output.
+A value closer to 0 produces a smoother, slower-responding output. A value
+closer to 1 tracks the input more closely with less smoothing.
+Values outside 0..1 are clamped.
+*)
+PROPERTY Alpha : LREAL]]></Declaration>
+      <Get Name="Get" Id="{31469ee6-8565-43a7-8b41-fddb9992a6f3}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Alpha := THIS^._fAlpha;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{734b40d9-b99d-48bf-ac74-177530aacba5}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fAlpha := LIMIT(0, Alpha, 1);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{e07e5489-01cf-4682-b2a6-3de0a6ded8e7}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fAlpha       : LREAL; // Smoothing factor. Clamped to 0..1.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fAlpha := LIMIT(0, fAlpha, 1);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{4927a7cf-4815-4d80-8db7-efbf8514d048}">
+      <Declaration><![CDATA[(*
+Sets the output to zero. 
+On the next :meth:`Run` call the output will reinitialise to the current input.
+*)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{52b259dc-3eb5-454b-a7d6-55e8a1b96138}">
+      <Declaration><![CDATA[(*
+Advances the filter by one time step.
+
+On the first call the output is initialised to the current input to avoid
+a transient caused by a zero initial state. Subsequent calls apply the
+exponential moving average.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit : BOOL := TRUE;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF FsCommon.F_ResetOnTrue(bInit) THEN
+	THIS^._fOutput := THIS^._fInput;
+	RETURN;
+END_IF
+
+THIS^._fOutput := THIS^._fAlpha * THIS^._fInput + (1.0 - THIS^._fAlpha) * THIS^._fOutput;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

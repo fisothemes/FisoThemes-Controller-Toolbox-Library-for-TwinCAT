@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_Ramp" Id="{3e701bb4-f2b0-400b-a281-d9cf8d7d93ef}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Generates a ramp signal that rises or falls at a fixed rate indefinitely.
+
+The output starts at :attr:`StartValue` and advances at :attr:`Rate` units per second.
+A positive rate produces a rising ramp, a negative rate a falling ramp.
+Changing :attr:`Rate` mid-run takes effect immediately.
+
+Calling :meth:`Reset` returns the output to :attr:`StartValue`.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fStartValue` and :attr:`fRate` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_Ramp EXTENDS FB_SoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fStartValue : LREAL; // Initial output value. Restored on Reset.
+	_fRate       : LREAL; // Rate of change in units per second. Negative values produce a falling ramp.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{13234901-43d3-4b9f-bb9a-d93364b0b4b1}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fStartValue  : LREAL; // Initial output value.
+	fRate        : LREAL; // Rate of change in units per second. Negative values produce a falling ramp.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fStartValue := fStartValue;
+THIS^._fRate       := fRate;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Rate" Id="{52f59026-3f80-4ae4-8815-389fb7dbb635}">
+      <Declaration><![CDATA[(*
+Gets or sets the rate of change in units per second.
+
+A positive value produces a rising ramp, a negative value a falling ramp.
+Changes take effect immediately.
+*)
+PROPERTY Rate : LREAL]]></Declaration>
+      <Get Name="Get" Id="{5ef5ad5d-3646-46aa-bf48-9d7f4899b13a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Rate := THIS^._fRate;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{528d60e5-6776-4b12-a12f-de7952461b23}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fRate := Rate;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{b99dea98-e8c7-46c5-8760-1e50c12e278b}">
+      <Declaration><![CDATA[(* Resets the output to the start value set in ``FB_init``. The rate is unaffected. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := THIS^._fStartValue;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{e2592b24-e543-4ef5-9285-c67e88b58f2c}">
+      <Declaration><![CDATA[(*
+Advances the ramp by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If the measured cycle
+   time is zero the method returns early without updating the output.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit : BOOL := TRUE;
+	{attribute 'hide'}
+	fT    : LREAL;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(NOT fbTaskCycle.HasChanged);
+
+THIS^._fOutput := THIS^._fOutput + THIS^._fRate * fT;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="StartValue" Id="{5e2026e3-11d3-44ba-8665-80fa7d3508be}">
+      <Declaration><![CDATA[(*
+Gets or sets the start value.
+
+This is the output value the ramp returns to after a :meth:`Reset`.
+*)
+PROPERTY StartValue  : LREAL]]></Declaration>
+      <Get Name="Get" Id="{2d2219c5-51ac-4afb-aa48-e459b926be01}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[StartValue := THIS^._fStartValue;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{afa9de91-f953-4974-bb4a-04b0bbdc052d}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fStartValue := StartValue;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>
