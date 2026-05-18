@@ -198,7 +198,7 @@ END_VAR
 
 fbSignal.Run();
 
-fRawSignal := fbSignal.Output + fbGenRand.NextRangedReal(-0.6, 0.6);;
+fRawSignal := fbSignal.Output + fbGenRand.NextRangedReal(-0.6, 0.6);
 
 fbFilter.Input := fRawSignal;
 fbFilter.Run();
