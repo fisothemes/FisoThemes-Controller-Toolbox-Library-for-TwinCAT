@@ -51,7 +51,7 @@
     <Compile Include="Conditioning\FB_RateLimiter.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Control\DUTs\E_AntiWindupMethod.TcTLEO">
+    <Compile Include="Control\FB_ClampingIntegrator.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Control\FB_Differentiator.TcPOU">
@@ -61,6 +61,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Control\FB_ProportionalGain.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Control\FB_TrackingIntegrator.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Filter\FB_FirstOrderIIRFilter.TcPOU">
@@ -153,7 +156,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Conditioning\DUTs" />
-    <Folder Include="Control\DUTs" />
     <Folder Include="Filter" />
     <Folder Include="Control" />
     <Folder Include="Analysis" />
