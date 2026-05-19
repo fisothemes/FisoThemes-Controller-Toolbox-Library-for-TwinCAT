@@ -13,7 +13,7 @@
 		</System>
 		<Plc>
 			<Project GUID="{9819E4C6-F52A-4484-A5CE-DD6112E7FBC0}" Name="FsControllerToolbox" PrjFilePath="FsControllerToolbox\FsControllerToolbox.plcproj" TmcFilePath="FsControllerToolbox\FsControllerToolbox.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcHash="{90BF2D49-1EB9-21C0-2024-30663D2C61EC}">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="FsControllerToolbox\FsControllerToolbox.tmc" TmcHash="{9BFA0B4D-5263-9E76-CC29-E839CE136A1B}">
 					<Name>FsControllerToolbox Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Contexts>
@@ -33,7 +33,7 @@
 				</Instance>
 			</Project>
 			<Project GUID="{DF5DDDB8-A1C3-47CC-8A97-0E0C78BE0750}" Name="FsControllerToolboxTest" PrjFilePath="FsControllerToolboxTest\FsControllerToolboxTest.plcproj" TmcFilePath="FsControllerToolboxTest\FsControllerToolboxTest.tmc" ReloadTmc="true" AmsPort="852" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502040" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcHash="{3D5B167F-9ACF-F36C-2880-D70CDEDC847D}">
+				<Instance Id="#x08502040" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="FsControllerToolboxTest\FsControllerToolboxTest.tmc" TmcHash="{15AAC850-12EE-1747-46A1-3F23CEA99682}">
 					<Name>FsControllerToolboxTest Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Contexts>
