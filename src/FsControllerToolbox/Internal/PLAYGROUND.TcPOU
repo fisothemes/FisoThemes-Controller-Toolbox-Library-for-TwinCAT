@@ -1,31 +1,38 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
   <POU Name="PLAYGROUND" Id="{d78796e8-f8c4-458f-9526-8acd467209b8}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM INTERNAL PLAYGROUND
 VAR
-	fSetpoint : LREAL; 
+	fSetpoint : LREAL;
+	fOutput   : LREAL;
 	fError    : LREAL;
-	fbPlant   : FB_FirstOrderPlant(fGain := 1.0, tTau := LTIME#5S);
+	fbPlant   : FB_FirstOrderPlant(fGain := 2.0, tTau := LTIME#5S);
 	fbP       : FB_ProportionalGain(fKp := 2.0);
-	fbI       : FB_Integrator(
-					tTn 				  := LTIME#5S,
-					fMaximum 			  := 100.0,
-					fMinimum  			  := 0.0,
-					eAntiWindupMethod 	  := E_AntiWindupMethod.BackCalculation,
+	fbI       : FB_TrackingIntegrator(
+					tTn                   := LTIME#5S,
+					fMaximum              := 100.0,
+					fMinimum              := 0.0,
 					tTrackingTimeConstant := LTIME#2S200MS);
 	fbD       : FB_Differentiator(tTv := LTIME#1S, tTd := LTIME#200MS);
+	fbClamp   : FB_Clamp(fMaximum := 100.0, fMinimum := 0.0);
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[fbP.Input := fError := fSetpoint - fbPlant.Output;
-fbP.Run();
-fbI.Input := fError;
-fbI.Run();
-fbD.Input := fError;
-fbD.Run();
+      <ST><![CDATA[fError := fSetpoint - fOutput;
 
-fbPlant.Input := fbP.Output + fbI.Output + fbD.Output;
-fbPlant.Run();]]></ST>
+fbP.Input         := fError; fbP.Run();
+fbD.Input         := fError; fbD.Run();
+fbI.Input         := fError;
+fbI.TrackingInput := -fbClamp.Residual;
+fbI.Run();
+
+fbClamp.Input := fbP.Output + fbI.Output + fbD.Output;
+fbClamp.Run();
+
+fbPlant.Input := fbClamp.Output;
+fbPlant.Run();
+
+fOutput := fbPlant.Output;]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>
