@@ -1,0 +1,156 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_RateLimiter" Id="{6b187191-fd48-454b-b40e-513b4b660686}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Limits the rate of change of the input signal.
+
+The output tracks the input but cannot change faster than :attr:`RisingLimit`
+units per second when increasing, or :attr:`FallingLimit` units per second when
+decreasing. A limit of zero removes the restriction in that direction, allowing
+the output to change freely.
+
+Calling :meth:`Reset` snaps the output to the current input immediately.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fRisingLimit` and :attr:`fFallingLimit` at
+   declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_RateLimiter EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fRisingLimit  : LREAL; // Maximum rate of increase in units per second. Zero means no limit.
+	_fFallingLimit : LREAL; // Maximum rate of decrease in units per second. Zero means no limit.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="FallingLimit" Id="{65e3de27-3938-4479-9570-005cce6e0121}">
+      <Declaration><![CDATA[(*
+Gets or sets the maximum rate of decrease in units per second.
+
+The output will not fall faster than this value regardless of how quickly
+the input changes. A value of zero removes the falling limit entirely.
+Values below zero are clamped to zero.
+*)
+PROPERTY FallingLimit : LREAL]]></Declaration>
+      <Get Name="Get" Id="{fa7e4be6-7f73-49ec-a010-f1ee3115bbdb}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[FallingLimit := THIS^._fFallingLimit;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{d1288e13-41e6-41a7-ac19-85cac747afff}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fFallingLimit := MAX(0, FallingLimit);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{cfac3fab-8989-4336-9069-c763a2c4a875}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains   : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode    : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fRisingLimit   : LREAL; // Maximum rate of increase in units per second. Zero means no limit.
+	fFallingLimit  : LREAL; // Maximum rate of decrease in units per second. Zero means no limit.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.RisingLimit  := fRisingLimit;
+THIS^.FallingLimit := fFallingLimit;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{be89a069-a758-4c55-b388-a32be8a697ea}">
+      <Declaration><![CDATA[(* Snaps the output to the current input, bypassing the rate limit. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := THIS^._fInput;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="RisingLimit" Id="{17ef19ac-68d3-46b2-8146-676ebe295d3b}">
+      <Declaration><![CDATA[(*
+Gets or sets the maximum rate of increase in units per second.
+
+The output will not rise faster than this value regardless of how quickly
+the input changes. A value of zero removes the rising limit entirely.
+Values below zero are clamped to zero.
+*)
+PROPERTY RisingLimit : LREAL]]></Declaration>
+      <Get Name="Get" Id="{7345b42a-9953-469f-b139-3cc0c80b3c47}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[RisingLimit := THIS^._fRisingLimit;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{d7f82d16-00d7-4613-9d2b-ae8e801207a9}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fRisingLimit := MAX(0, RisingLimit);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Run" Id="{ddc327d3-e350-442a-a454-06a785db0079}">
+      <Declaration><![CDATA[(*
+Advances the rate limiter by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If the measured cycle
+   time is zero the method returns early without updating the output.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fT          : LREAL;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fDelta    	: LREAL;
+	fMaxDelta 	: LREAL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+	THIS^._fOutput := THIS^._fInput;
+	RETURN;
+END_IF
+
+RETURN(NOT fbTaskCycle.HasChanged);
+
+THIS^._fRisingLimit  := MAX(0, THIS^._fRisingLimit);
+THIS^._fFallingLimit := MAX(0, THIS^._fFallingLimit);
+
+fDelta := THIS^._fInput - THIS^._fOutput;
+
+IF fDelta > 0 AND THIS^._fRisingLimit > 0 THEN
+	fMaxDelta      := THIS^._fRisingLimit * fT;
+	THIS^._fOutput := THIS^._fOutput + MIN(fDelta, fMaxDelta);
+ELSIF fDelta < 0 AND THIS^._fFallingLimit > 0 THEN
+	fMaxDelta      := THIS^._fFallingLimit * fT;
+	THIS^._fOutput := THIS^._fOutput - MIN(ABS(fDelta), fMaxDelta);
+ELSE
+	THIS^._fOutput := THIS^._fInput;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
