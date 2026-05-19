@@ -19,7 +19,7 @@
     <Company>FisoThemes</Company>
     <Released>false</Released>
     <Title>FsControllerToolbox</Title>
-    <ProjectVersion>0.1.0</ProjectVersion>
+    <ProjectVersion>0.2.0</ProjectVersion>
     <Author>Goodwill Mzumala</Author>
     <LibraryCategories>
       <LibraryCategory xmlns="">
@@ -33,7 +33,7 @@
     </SelectedLibraryCategories>
     <PreserveCompiledLibComments>true</PreserveCompiledLibComments>
     <DocFormat>reStructuredText</DocFormat>
-    <Description>A library for building and modelling control systems.</Description>
+    <Description>A library of composable building blocks for modelling and building control systems in TwinCAT.</Description>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Conditioning\DUTs\E_DeadbandMode.TcTLEO">
