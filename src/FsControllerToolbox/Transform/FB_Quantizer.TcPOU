@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_Quantizer" Id="{f6873a72-5b17-40ab-a215-a99a0df1449b}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Rounds the input signal to the nearest multiple of :attr:`StepSize`.
+
+Useful for simulating ADC resolution, modelling actuators with discrete
+positions, or testing controller behaviour under quantisation.
+
+A :attr:`StepSize` of zero passes the input through unchanged.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fStepSize` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_Quantizer EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable
+VAR
+	_fStepSize : LREAL; // Quantisation step size. Zero passes the input through unchanged.
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{fa282ad0-d329-46b7-8d76-c4303520d801}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fStepSize    : LREAL; // Quantisation step size. Zero passes the input through unchanged.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fStepSize := fStepSize;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{849f905a-d254-4e5d-bc42-9c82dac4dfc1}">
+      <Declaration><![CDATA[(* Applies quantisation to the current input. *)
+METHOD Run
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF THIS^._fStepSize = 0 THEN
+	THIS^._fOutput := THIS^._fInput;
+	RETURN;
+END_IF
+
+THIS^._fOutput := FsCommon.F_TruncateNumber(
+	THIS^._fInput / THIS^._fStepSize + 0.5
+) * THIS^._fStepSize;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="StepSize" Id="{40436987-be23-4e42-a609-af08620aeba2}">
+      <Declaration><![CDATA[(*
+Gets or sets the quantisation step size.
+
+The output is rounded to the nearest multiple of this value. For example,
+a step size of 0.5 rounds the input to the nearest 0.5. A value of zero
+passes the input through unchanged.
+*)
+PROPERTY StepSize : LREAL]]></Declaration>
+      <Get Name="Get" Id="{7230e5e7-827a-4094-9b15-bae9c2480703}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[StepSize := THIS^._fStepSize;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{8fd83605-6030-4988-aa87-1e7d956ff7e2}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fStepSize := StepSize;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

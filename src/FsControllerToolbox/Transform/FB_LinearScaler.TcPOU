@@ -1,0 +1,150 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_LinearScaler" Id="{7b2f89cf-6ad2-43fe-a0e9-512acf712e86}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Maps the input signal from one range to another using linear interpolation.
+
+The input range [:attr:`InputMin`, :attr:`InputMax`] is mapped to the output
+range [:attr:`OutputMin`, :attr:`OutputMax`]. Values outside the input range
+are extrapolated linearly.
+
+If :attr:`InputMin` equals :attr:`InputMax` the output is set to :attr:`OutputMin`.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fInputMax`, :attr:`fInputMin`, :attr:`fOutputMin`,
+   :attr:`fOutputMax` and :attr:`fOutputMin` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_LinearScaler EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable
+VAR
+	_fInputMax  : LREAL; // Upper bound of the input range.
+	_fInputMin  : LREAL; // Lower bound of the input range.
+	_fOutputMax : LREAL; // Upper bound of the output range.
+	_fOutputMin : LREAL; // Lower bound of the output range.
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{e2a4c53d-9550-473f-a258-e75dee5237c4}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fInputMax    : LREAL; // Upper bound of the input range.
+	fInputMin    : LREAL; // Lower bound of the input range.
+	fOutputMax   : LREAL; // Upper bound of the output range.
+	fOutputMin   : LREAL; // Lower bound of the output range.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fInputMax  := fInputMax;
+THIS^._fInputMin  := fInputMin;
+THIS^._fOutputMax := fOutputMax;
+THIS^._fOutputMin := fOutputMin;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="InputMax" Id="{715570a4-0687-498a-91ea-5341a44c52c9}">
+      <Declaration><![CDATA[(* Gets or sets the upper bound of the input range. *)
+PROPERTY InputMax : LREAL]]></Declaration>
+      <Get Name="Get" Id="{bedb366a-eca8-413c-af0f-c23c7fbbb11a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[InputMax := THIS^._fInputMax;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{236af9a1-68c3-464c-83b3-e4eb5b7d0cee}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fInputMax := InputMax;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="InputMin" Id="{48ac9962-d7d9-4071-af9b-6c006664ad24}">
+      <Declaration><![CDATA[(* Gets or sets the lower bound of the input range. *)
+PROPERTY InputMin : LREAL]]></Declaration>
+      <Get Name="Get" Id="{3260703e-a418-477d-aa65-7e5a0ca6b552}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[InputMin := THIS^._fInputMin;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{27067c6f-88f7-447f-b6db-b4d5515fdded}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fInputMin := InputMin;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="OutputMax" Id="{565626f7-72b6-40f8-932d-411a2843ee68}">
+      <Declaration><![CDATA[(* Gets or sets the upper bound of the output range. *)
+PROPERTY OutputMax : LREAL]]></Declaration>
+      <Get Name="Get" Id="{cb6648b8-0fec-4238-91a1-75ffbc042427}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[OutputMax := THIS^._fOutputMax;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{02e6ee76-637c-45dd-91ac-185788ef083b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fOutputMax := OutputMax;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="OutputMin" Id="{2701262a-766c-4a8d-9236-5efd44d6f1b6}">
+      <Declaration><![CDATA[(* Gets or sets the lower bound of the output range. *)
+PROPERTY OutputMin : LREAL]]></Declaration>
+      <Get Name="Get" Id="{ec4ec172-74bd-4139-bd87-228cd6c7eb59}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[OutputMin := THIS^._fOutputMin;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{19a237c5-3776-45d9-8a88-5e2e792705f4}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fOutputMin := OutputMin;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Run" Id="{114caeb0-a391-46d8-9368-a319d341c39e}">
+      <Declaration><![CDATA[(* Applies the linear scaling to the current input. *)
+METHOD Run
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF THIS^._fInputMin = THIS^._fInputMax THEN
+	THIS^._fOutput := THIS^._fOutputMin;
+	RETURN;
+END_IF
+
+THIS^._fOutput := FsCommon.F_Lerp(
+	THIS^._fOutputMin,
+	THIS^._fOutputMax,
+	(THIS^._fInput - THIS^._fInputMin) / (THIS^._fInputMax - THIS^._fInputMin));]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

@@ -138,6 +138,12 @@
     <Compile Include="Simulation\FB_SecondOrderPlant.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Transform\FB_LinearScaler.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Transform\FB_Quantizer.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Version\Global_Version.TcGVL">
       <SubType>Code</SubType>
     </Compile>
