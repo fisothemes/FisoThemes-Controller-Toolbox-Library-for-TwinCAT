@@ -39,6 +39,9 @@
     <Compile Include="Conditioning\DUTs\E_DeadbandMode.TcTLEO">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Conditioning\FB_Clamp.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Conditioning\FB_Deadband.TcPOU">
       <SubType>Code</SubType>
     </Compile>
