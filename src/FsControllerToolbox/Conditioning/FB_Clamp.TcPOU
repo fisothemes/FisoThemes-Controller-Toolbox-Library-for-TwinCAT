@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
   <POU Name="FB_Clamp" Id="{7feb2b8b-c668-4959-bf69-a7c0d05ee3e3}" SpecialFunc="None">
     <Declaration><![CDATA[(*
 Clamps the input signal to the range [:attr:`Minimum`, :attr:`Maximum`].
@@ -17,8 +17,9 @@ through unchanged.
 FUNCTION_BLOCK FINAL FB_Clamp EXTENDS FB_SisoComponent
 IMPLEMENTS FsCommon.I_Runnable
 VAR
-	_fMaximum : LREAL; // Upper clamp bound. Clamped to >= Minimum.
-	_fMinimum : LREAL; // Lower clamp bound. Clamped to <= Maximum.
+	_fMaximum  : LREAL; // Upper clamp bound. Clamped to >= Minimum.
+	_fMinimum  : LREAL; // Lower clamp bound. Clamped to <= Maximum.
+	_fResidual : LREAL; // Difference between the unclamped input and the clamped output.
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -88,6 +89,18 @@ END_VAR
         </Implementation>
       </Set>
     </Property>
+    <Property Name="Residual" Id="{8c5d9c67-1271-42f2-bbb0-3e4c0f8553f4}">
+      <Declaration><![CDATA[(* Gets the difference between the unclamped input and the clamped output. Zero when the input is within [:attr:`Minimum`, :attr:`Maximum`]. *)
+PROPERTY Residual : LREAL]]></Declaration>
+      <Get Name="Get" Id="{dde4a732-8c39-486d-a8b2-1c90df6fe918}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
     <Method Name="Run" Id="{6f1b4f3f-40be-47cc-ad0e-f5a5a2df3d40}">
       <Declaration><![CDATA[(* Clamps the current input to [:attr:`Minimum`, :attr:`Maximum`]. *)
 METHOD Run
@@ -95,7 +108,8 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[THIS^._fOutput := LIMIT(THIS^._fMinimum, THIS^._fInput, THIS^._fMaximum);]]></ST>
+        <ST><![CDATA[THIS^._fOutput 	 := LIMIT(THIS^._fMinimum, THIS^._fInput, THIS^._fMaximum);
+THIS^._fResidual := THIS^._fInput - THIS^._fOutput;]]></ST>
       </Implementation>
     </Method>
   </POU>
