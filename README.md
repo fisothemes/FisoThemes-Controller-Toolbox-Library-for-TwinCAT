@@ -11,13 +11,14 @@ FsControllerToolbox depends on the following libraries:
 
 ## Library Structure
 
-| Category         | Description                                                   |
-|------------------|---------------------------------------------------------------|
+| Category         | Description                                                        |
+|------------------|--------------------------------------------------------------------|
 | **Signals**      | Periodic and aperiodic signal generators (sine, square, triangle, sawtooth, PWM, ramp). |
-| **Simulation**   | Discrete-time plant models for closed-loop testing.           |
-| **Control**      | Proportional, integral, and derivative controller components. |
-| **Filters**      | Signal filtering blocks.                                      |
-| **Conditioning** | Signal shaping blocks (deadband, hysteresis).                 |
+| **Simulation**   | Discrete-time plant models for closed-loop testing.                |
+| **Control**      | Proportional, integral, and derivative controller components.      |
+| **Filters**      | Signal filtering blocks.                                           |
+| **Conditioning** | Signal shaping blocks (deadband, hysteresis, clamp, rate limiter). |
+| **Transform**    | Signal transformation blocks (linear scaler, quantizer).           |
 
 ## Usage
 
