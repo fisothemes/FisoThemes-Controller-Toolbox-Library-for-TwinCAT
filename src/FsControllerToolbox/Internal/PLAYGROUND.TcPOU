@@ -22,8 +22,8 @@ END_VAR
 fError := fSetpoint - fOutput;
 
 fbP.Input         := fError; fbP.Run();
-fbD.Input         := fError; fbD.Run();
-fbI.Input         := fError;
+fbD.Input         := fbP.Output; fbD.Run();
+fbI.Input         := fbP.Output;
 fbI.ComparatorInput := fbClamp.Residual;
 fbI.Run();
 

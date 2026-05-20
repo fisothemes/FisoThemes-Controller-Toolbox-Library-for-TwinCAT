@@ -34,7 +34,7 @@
     <PreserveCompiledLibComments>true</PreserveCompiledLibComments>
     <DocFormat>reStructuredText</DocFormat>
     <Description>A library of composable building blocks for modelling and building control systems in TwinCAT.</Description>
-    <CombineIds>false</CombineIds>
+    <CombineIds>true</CombineIds>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Conditioning\DUTs\E_DeadbandMode.TcTLEO">
