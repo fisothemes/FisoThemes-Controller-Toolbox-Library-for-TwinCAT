@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
   <POU Name="FB_Clamp" Id="{7feb2b8b-c668-4959-bf69-a7c0d05ee3e3}" SpecialFunc="None">
     <Declaration><![CDATA[(*
 Clamps the input signal to the range [:attr:`Minimum`, :attr:`Maximum`].
@@ -97,7 +97,7 @@ PROPERTY Residual : LREAL]]></Declaration>
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[]]></ST>
+          <ST><![CDATA[Residual := THIS^._fResidual;]]></ST>
         </Implementation>
       </Get>
     </Property>
