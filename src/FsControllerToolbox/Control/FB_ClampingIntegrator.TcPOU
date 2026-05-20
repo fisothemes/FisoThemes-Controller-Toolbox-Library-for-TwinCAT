@@ -1,14 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
   <POU Name="FB_ClampingIntegrator" Id="{a441b0c8-8498-4f29-b456-b5f596914d8c}" SpecialFunc="None">
     <Declaration><![CDATA[(*
-Integrates the input error signal with comparitor-based anti-windup.
+Integrates the input error signal with comparator-based anti-windup.
 
 Extends :class:`FB_Integrator` by suppressing integration when the
-:attr:`ComparitorInput` indicates saturation and the input would push
+:attr:`ComparatorInput` indicates saturation and the input would push
 further into saturation. The suppression behaviour is controlled by :attr:`Mode`.
 
-:attr:`ComparitorInput` is typically the :attr:`~FB_Clamp.Residual` of an
+:attr:`ComparatorInput` is typically the :attr:`~FB_Clamp.Residual` of an
 :class:`FB_Clamp` block placed after the PID summation.
 
 .. note::
@@ -20,11 +20,11 @@ further into saturation. The suppression behaviour is controlled by :attr:`Mode`
 {attribute 'no_assign'}
 {attribute 'enable_dynamic_creation'}
 {attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
-FUNCTION_BLOCK FB_ClampingIntegrator EXTENDS FB_Integrator
+FUNCTION_BLOCK FINAL FB_ClampingIntegrator EXTENDS FB_Integrator
 VAR
-	_fComparitorInput  : LREAL;
+	_fComparatorInput  : LREAL;
 	_bAntiWindupActive : BOOL; // TRUE when the output is saturated and integration is halted.
-	_eMode			   : E_AntiWindupMode;
+	_eMode			   : E_AntiWindupMode; // The integrator behaviour during saturation.
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
@@ -41,9 +41,9 @@ END_VAR
         </Implementation>
       </Get>
     </Property>
-    <Property Name="ComparitorInput" Id="{60d2ba06-28ae-460a-8c6f-a68a379b682b}">
+    <Property Name="ComparatorInput" Id="{60d2ba06-28ae-460a-8c6f-a68a379b682b}">
       <Declaration><![CDATA[(*
-Gets or sets the comparitor input.
+Gets or sets the comparator input.
 
 This is typically the :attr:`~FB_Clamp.Residual` of an :class:`FB_Clamp` block
 placed after the PID summation. A positive value indicates the unsaturated sum
@@ -51,13 +51,13 @@ exceeded the clamp maximum; a negative value indicates it fell below the clamp
 minimum. When this value and :attr:`Input` have the same sign, integration is
 suppressed according to :attr:`Mode`.
 *)
-PROPERTY ComparitorInput : LREAL]]></Declaration>
+PROPERTY ComparatorInput : LREAL]]></Declaration>
       <Get Name="Get" Id="{37e73885-9d12-4246-a885-24bf09368a28}">
         <Declaration><![CDATA[VAR
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[ComparitorInput := THIS^._fComparitorInput;]]></ST>
+          <ST><![CDATA[ComparatorInput := THIS^._fComparatorInput;]]></ST>
         </Implementation>
       </Get>
       <Set Name="Set" Id="{9e64b35d-813d-4577-b74d-e59b4090ca93}">
@@ -65,7 +65,7 @@ END_VAR
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[THIS^._fComparitorInput := ComparitorInput;]]></ST>
+          <ST><![CDATA[THIS^._fComparatorInput := ComparatorInput;]]></ST>
         </Implementation>
       </Set>
     </Property>
@@ -75,12 +75,11 @@ VAR_INPUT
 	bInitRetains : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
 	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
 	tTn          : LTIME; // Integral action time. LTIME#0 disables integration.
-	eMode		 : E_AntiWindupMode; 
+	eMode		 : E_AntiWindupMode; // The integrator behaviour during saturation.
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[THIS^._tTn   := tTn;
-THIS^._eMode := eMode;]]></ST>
+        <ST><![CDATA[THIS^._eMode := eMode;]]></ST>
       </Implementation>
     </Method>
     <Property Name="Mode" Id="{deefee7d-dda7-4e67-8825-66b7b0007a98}">
@@ -88,7 +87,7 @@ THIS^._eMode := eMode;]]></ST>
 Gets or sets the anti-windup mode.
 
 Controls the integrator behaviour when saturation is detected via
-:attr:`ComparitorInput`. See :class:`E_AntiWindupMode` for available modes.
+:attr:`ComparatorInput`. See :class:`E_AntiWindupMode` for available modes.
 *)
 PROPERTY Mode : E_AntiWindupMode]]></Declaration>
       <Get Name="Get" Id="{d27527bd-4a92-400d-8649-37639a631ce9}">
@@ -162,9 +161,8 @@ IF THIS^._tTn = LTIME#0S THEN
 	RETURN;
 END_IF
 
-
-THIS^._bAntiWindupActive := (-THIS^._fComparitorInput < 0.0 AND THIS^._fInput > 0.0) OR 
-                            (-THIS^._fComparitorInput > 0.0 AND THIS^._fInput < 0.0);
+THIS^._bAntiWindupActive := (-THIS^._fComparatorInput < 0.0 AND THIS^._fInput > 0.0) OR 
+                            (-THIS^._fComparatorInput > 0.0 AND THIS^._fInput < 0.0);
 							
 fbTrig(CLK := THIS^._bAntiWindupActive);
 IF fbTrig.Q AND THIS^._eMode = E_AntiWindupMode.Off THEN 

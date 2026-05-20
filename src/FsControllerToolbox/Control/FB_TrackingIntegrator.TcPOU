@@ -1,10 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
   <POU Name="FB_TrackingIntegrator" Id="{c82a1daf-bbfa-4a89-a287-ab32f5c04bf6}" SpecialFunc="None">
     <Declaration><![CDATA[(*
 Integrates the input error signal with back-calculation anti-windup.
 
-Extends :class:`FB_Integrator` by accepting an external comparitor input,
+Extends :class:`FB_Integrator` by accepting an external comparator input,
 typically the :attr:`~FB_Clamp.Residual` of an :class:`FB_Clamp` block, to
 unwind the integrator gradually when the output is saturated. The residual is
 scaled by ``1 / Tt`` and subtracted from the integrator input each cycle.
@@ -14,7 +14,7 @@ A typical wiring pattern:
 .. code-block:: pascal
 
    fbI.Input           := fbP.Output; // Standard form. Use fError for parallel form.
-   fbI.ComparitorInput := fbClamp.Residual;
+   fbI.ComparatorInput := fbClamp.Residual;
    fbI.Run();
    fbClamp.Input := fbP.Output + fbI.Output + fbD.Output;
    fbClamp.Run();
@@ -28,18 +28,18 @@ A typical wiring pattern:
 {attribute 'no_assign'}
 {attribute 'enable_dynamic_creation'}
 {attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
-FUNCTION_BLOCK FB_TrackingIntegrator EXTENDS FB_Integrator
+FUNCTION_BLOCK FINAL FB_TrackingIntegrator EXTENDS FB_Integrator
 VAR
-	_fComparitorInput  : LREAL; // External residual signal for back-calculation anti-windup.
+	_fComparatorInput  : LREAL; // External residual signal for back-calculation anti-windup.
 	_tTt 			   : LTIME; // Tracking time constant (Tt). Controls how quickly the integrator unwinds.
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
     </Implementation>
-    <Property Name="ComparitorInput" Id="{f18c3236-13f9-4676-a06a-10a11ddd79e4}">
+    <Property Name="ComparatorInput" Id="{f18c3236-13f9-4676-a06a-10a11ddd79e4}">
       <Declaration><![CDATA[(*
-Gets or sets the comparitor input.
+Gets or sets the comparator input.
 
 This is typically the :attr:`~FB_Clamp.Residual` of an :class:`FB_Clamp` block
 placed after the PID summation, passed directly without negation. The block
@@ -49,13 +49,13 @@ the integrator when the output is saturated.
 A positive value indicates the unsaturated sum exceeded the clamp maximum.
 A negative value indicates it fell below the clamp minimum.
 *)
-PROPERTY ComparitorInput : LREAL]]></Declaration>
+PROPERTY ComparatorInput : LREAL]]></Declaration>
       <Get Name="Get" Id="{243f049c-3d48-40b9-b37f-fdd083fc3b95}">
         <Declaration><![CDATA[VAR
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[ComparitorInput := THIS^._fComparitorInput;]]></ST>
+          <ST><![CDATA[ComparatorInput := THIS^._fComparatorInput;]]></ST>
         </Implementation>
       </Get>
       <Set Name="Set" Id="{715f49a0-3756-4c2d-b840-4da95b9b1ed2}">
@@ -63,7 +63,7 @@ END_VAR
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[THIS^._fComparitorInput := ComparitorInput;]]></ST>
+          <ST><![CDATA[THIS^._fComparatorInput := ComparatorInput;]]></ST>
         </Implementation>
       </Set>
     </Property>
@@ -73,12 +73,11 @@ VAR_INPUT
 	bInitRetains : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
 	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
 	tTn          : LTIME; // Integral action time. LTIME#0 disables integration.
-	tTt : LTIME; // Tracking time constant (Tt). A typical starting value is SQRT(Tn * Td).
+	tTt 		 : LTIME; // Tracking time constant (Tt). A typical starting value is SQRT(Tn * Td).
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[THIS^._tTn := tTn;
-THIS^._tTt := tTt;]]></ST>
+        <ST><![CDATA[THIS^._tTt := tTt;]]></ST>
       </Implementation>
     </Method>
     <Method Name="Run" Id="{45b7e161-cdeb-4bb4-ba6e-fd45ddcc1b7c}">
@@ -113,12 +112,15 @@ END_IF
 
 RETURN(NOT fbTaskCycle.HasChanged);
 
+THIS^._fMaximum := MAX(THIS^._fMinimum, THIS^._fMaximum);
+THIS^._fMinimum := MIN(THIS^._fMinimum, THIS^._fMaximum);
+
 IF FsCommon.F_ResetOnTrue(THIS^._bSync) THEN
 	THIS^._fOutput := LIMIT(THIS^._fMinimum, THIS^._fSync, THIS^._fMaximum);
 END_IF
 
 IF THIS^._tTn = LTIME#0S THEN
-	THIS^._fOutput           := 0;
+	THIS^._fOutput := 0;
 	RETURN;
 END_IF
 
@@ -126,15 +128,16 @@ fKi := 1.0 / (TO_LREAL(THIS^._tTn) / TO_LREAL(LTIME#1S));
 
 IF THIS^._tTt > LTIME#0S THEN
 	fTt         := TO_LREAL(THIS^._tTt) / TO_LREAL(LTIME#1S);
-	fWindupBack := THIS^._fComparitorInput / fTt;
+	fWindupBack := THIS^._fComparatorInput / fTt;
 ELSE
 	fWindupBack := 0;
 END_IF
 
-THIS^._fOutput := THIS^._fOutput + (fKi * THIS^._fInput - fWindupBack) * fT;
-THIS^._fOutput := LIMIT(THIS^._fMinimum, THIS^._fOutput, THIS^._fMaximum);
-
-
+THIS^._fOutput := LIMIT(
+	THIS^._fMinimum, 
+	THIS^._fOutput + (fKi * THIS^._fInput - fWindupBack) * fT,
+	THIS^._fMaximum
+);
 
 ]]></ST>
       </Implementation>
