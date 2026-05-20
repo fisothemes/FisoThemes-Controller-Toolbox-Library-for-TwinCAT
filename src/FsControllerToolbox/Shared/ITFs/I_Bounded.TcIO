@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <Itf Name="I_Bounded" Id="{3d048575-6545-075b-0efe-eac8647de408}">
+    <Declaration><![CDATA[(*
+Exposes configurable upper and lower bounds for blocks with clamped output.
+
+Implemented by blocks such as :class:`FB_ClampingIntegrator` and :class:`FB_Clamp`
+to allow external configuration of their output limits.
+*)
+INTERFACE I_Bounded EXTENDS I_Component
+]]></Declaration>
+    <Property Name="Maximum" Id="{9fdcd111-71f5-074f-0ca5-c18793c815f7}">
+      <Declaration><![CDATA[(*
+Gets or sets the upper bound.
+
+This value could be clamped to be greater than or equal to :attr:`Minimum`.
+Thus it is best practice to set this before :attr:`Minimum` to ensure the 
+guard applies correctly.
+*)
+PROPERTY Maximum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{621695c0-3bd4-0d9b-20f5-f82c81def656}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{62e8e82a-47ec-064d-2194-1d963c9f18df}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+    <Property Name="Minimum" Id="{faaa7dc9-4a86-07df-0b09-3b5b378f13c0}">
+      <Declaration><![CDATA[(*
+Gets or sets the lower bound.
+
+This value could be clamped to be less than or equal to :attr:`Maximum`.
+Thus it is best practice to set :attr:`Maximum` before this property to 
+ensure the guard applies correctly.
+*)
+PROPERTY Minimum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{bf92239f-6c7b-0bfc-0482-72b8ff3a57fb}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{8a194868-5d97-0383-3af1-3eedce4794b7}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+  </Itf>
+</TcPlcObject>

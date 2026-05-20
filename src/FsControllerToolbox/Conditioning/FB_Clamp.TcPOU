@@ -15,7 +15,7 @@ through unchanged.
 {attribute 'enable_dynamic_creation'}
 {attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
 FUNCTION_BLOCK FINAL FB_Clamp EXTENDS FB_SisoComponent
-IMPLEMENTS FsCommon.I_Runnable
+IMPLEMENTS FsCommon.I_Runnable, I_Bounded
 VAR
 	_fMaximum  : LREAL; // Upper clamp bound. Clamped to >= Minimum.
 	_fMinimum  : LREAL; // Lower clamp bound. Clamped to <= Maximum.

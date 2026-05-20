@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
   <POU Name="FB_Integrator" Id="{7ca0c08c-f207-4eb5-a0d9-54bd93c65f82}" SpecialFunc="None">
     <Declaration><![CDATA[(*
 Integrates the input error signal over time.
@@ -21,7 +21,7 @@ switching from manual to automatic mode.
 {attribute 'enable_dynamic_creation'}
 {attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
 FUNCTION_BLOCK FB_Integrator EXTENDS FB_SisoComponent
-IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable, I_Bounded
 VAR
 	_tTn   		: LTIME; // Integral action time (Tn).
 	_bSync 		: BOOL;  // Triggers a bumpless transfer on the next Run call.

@@ -100,6 +100,9 @@
     <Compile Include="Shared\FB_SoComponent.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Shared\ITFs\I_Bounded.TcIO">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Shared\ITFs\I_Component.TcIO">
       <SubType>Code</SubType>
     </Compile>
