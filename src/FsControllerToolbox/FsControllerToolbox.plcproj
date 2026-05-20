@@ -51,6 +51,9 @@
     <Compile Include="Conditioning\FB_RateLimiter.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Control\DUTs\E_AntiWindupMode.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Control\FB_ClampingIntegrator.TcPOU">
       <SubType>Code</SubType>
     </Compile>
@@ -156,6 +159,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Conditioning\DUTs" />
+    <Folder Include="Control\DUTs" />
     <Folder Include="Filter" />
     <Folder Include="Control" />
     <Folder Include="Analysis" />

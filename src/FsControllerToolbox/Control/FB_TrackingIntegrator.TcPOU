@@ -1,59 +1,84 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
   <POU Name="FB_TrackingIntegrator" Id="{c82a1daf-bbfa-4a89-a287-ab32f5c04bf6}" SpecialFunc="None">
     <Declaration><![CDATA[(*
-Integrates the input error signal with output clamping and back-calculation anti-windup.
+Integrates the input error signal with back-calculation anti-windup.
 
-Extends :class:`FB_ClampingIntegrator` by accepting an external tracking input,
-typically the residual from an :class:`FB_Clamp` block, to unwind the integrator
-gradually when the output is saturated.
+Extends :class:`FB_Integrator` by accepting an external comparitor input,
+typically the :attr:`~FB_Clamp.Residual` of an :class:`FB_Clamp` block, to
+unwind the integrator gradually when the output is saturated. The residual is
+scaled by ``1 / Tt`` and subtracted from the integrator input each cycle.
 
 A typical wiring pattern:
 
 .. code-block:: pascal
 
-   fbI.Input         := fbP.Output; // Standard form use fError if in parallel form.  
-   fbI.TrackingInput := -fbClamp.Residual;
+   fbI.Input           := fbP.Output; // Standard form. Use fError for parallel form.
+   fbI.ComparitorInput := fbClamp.Residual;
    fbI.Run();
    fbClamp.Input := fbP.Output + fbI.Output + fbD.Output;
    fbClamp.Run();
-   
+
 .. note::
    Set :attr:`Maximum` before :attr:`Minimum` to ensure the clamp guard applies
    correctly.
-   
-   Use ``FB_init`` to set :attr:`tTn`, :attr:`fMaximum`, :attr:`fMinimum` 
-   and :attr:`tTrackingTimeConstant` at declaration time.
 
+   Use ``FB_init`` to set :attr:`tTn` and :attr:`tTt` at declaration time.
 *)
 {attribute 'no_assign'}
 {attribute 'enable_dynamic_creation'}
 {attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
-FUNCTION_BLOCK FB_TrackingIntegrator EXTENDS FB_ClampingIntegrator
+FUNCTION_BLOCK FB_TrackingIntegrator EXTENDS FB_Integrator
 VAR
-	_fTrackingInput        : LREAL; // External residual signal for back-calculation anti-windup.
-	_tTrackingTimeConstant : LTIME; // Tracking time constant (Tt). Controls how quickly the integrator unwinds.
+	_fComparitorInput  : LREAL; // External residual signal for back-calculation anti-windup.
+	_tTt 			   : LTIME; // Tracking time constant (Tt). Controls how quickly the integrator unwinds.
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
     </Implementation>
+    <Property Name="ComparitorInput" Id="{f18c3236-13f9-4676-a06a-10a11ddd79e4}">
+      <Declaration><![CDATA[(*
+Gets or sets the comparitor input.
+
+This is typically the :attr:`~FB_Clamp.Residual` of an :class:`FB_Clamp` block
+placed after the PID summation, passed directly without negation. The block
+subtracts the scaled residual from the integrator input internally to unwind
+the integrator when the output is saturated.
+
+A positive value indicates the unsaturated sum exceeded the clamp maximum.
+A negative value indicates it fell below the clamp minimum.
+*)
+PROPERTY ComparitorInput : LREAL]]></Declaration>
+      <Get Name="Get" Id="{243f049c-3d48-40b9-b37f-fdd083fc3b95}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ComparitorInput := THIS^._fComparitorInput;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{715f49a0-3756-4c2d-b840-4da95b9b1ed2}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fComparitorInput := ComparitorInput;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
     <Method Name="FB_init" Id="{04699b68-b4a9-4d56-acf6-ad1a410cdcac}">
       <Declaration><![CDATA[METHOD FB_init : BOOL
 VAR_INPUT
 	bInitRetains : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
 	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
 	tTn          : LTIME; // Integral action time. LTIME#0 disables integration.
-	fMaximum     : LREAL; // Upper output clamp.
-	fMinimum     : LREAL; // Lower output clamp.
-	tTrackingTimeConstant : LTIME; // Tracking time constant (Tt). A typical starting value is SQRT(Tn * Td).
+	tTt : LTIME; // Tracking time constant (Tt). A typical starting value is SQRT(Tn * Td).
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[THIS^._tTn                   := tTn;
-THIS^.Maximum                := fMaximum;
-THIS^.Minimum                := fMinimum;
-THIS^._tTrackingTimeConstant := tTrackingTimeConstant;]]></ST>
+        <ST><![CDATA[THIS^._tTn := tTn;
+THIS^._tTt := tTt;]]></ST>
       </Implementation>
     </Method>
     <Method Name="Run" Id="{45b7e161-cdeb-4bb4-ba6e-fd45ddcc1b7c}">
@@ -62,8 +87,8 @@ Advances the tracking integrator by one time step.
 
 .. note::
    Must be called once per cycle on a single PLC task. If :attr:`Tn` is
-   ``LTIME#0`` the output is set to zero. If :attr:`TrackingTimeConstant` is
-   ``LTIME#0`` the back-calculation correction is disabled.
+   ``LTIME#0`` the output is set to zero. If :attr:`Tt` is ``LTIME#0``
+   the back-calculation correction is disabled.
 *)
 METHOD Run
 VAR_INST
@@ -94,59 +119,27 @@ END_IF
 
 IF THIS^._tTn = LTIME#0S THEN
 	THIS^._fOutput           := 0;
-	THIS^._bAntiWindupActive := FALSE;
 	RETURN;
 END_IF
 
 fKi := 1.0 / (TO_LREAL(THIS^._tTn) / TO_LREAL(LTIME#1S));
 
-IF THIS^._tTrackingTimeConstant > LTIME#0S THEN
-	fTt         := TO_LREAL(THIS^._tTrackingTimeConstant) / TO_LREAL(LTIME#1S);
-	fWindupBack := THIS^._fTrackingInput / fTt;
+IF THIS^._tTt > LTIME#0S THEN
+	fTt         := TO_LREAL(THIS^._tTt) / TO_LREAL(LTIME#1S);
+	fWindupBack := THIS^._fComparitorInput / fTt;
 ELSE
 	fWindupBack := 0;
 END_IF
 
-THIS^._fOutput := THIS^._fOutput + (fKi * THIS^._fInput + fWindupBack) * fT;
-
-THIS^._fOutput           := LIMIT(THIS^._fMinimum, THIS^._fOutput, THIS^._fMaximum);
-THIS^._bAntiWindupActive := 
-	(THIS^._fOutput = THIS^._fMaximum AND THIS^._fInput > 0) OR
-	(THIS^._fOutput = THIS^._fMinimum AND THIS^._fInput < 0);
+THIS^._fOutput := THIS^._fOutput + (fKi * THIS^._fInput - fWindupBack) * fT;
+THIS^._fOutput := LIMIT(THIS^._fMinimum, THIS^._fOutput, THIS^._fMaximum);
 
 
 
 ]]></ST>
       </Implementation>
     </Method>
-    <Property Name="TrackingInput" Id="{f18c3236-13f9-4676-a06a-10a11ddd79e4}">
-      <Declaration><![CDATA[(*
-Gets or sets the external tracking input.
-
-This is typically the negated :attr:`~FB_Clamp.Residual` of an :class:`FB_Clamp`
-block placed after the PID summation. A negative value unwinds the integrator
-when the output is saturated above its maximum; a positive value unwinds it
-when saturated below its minimum.
-*)
-PROPERTY TrackingInput : LREAL]]></Declaration>
-      <Get Name="Get" Id="{243f049c-3d48-40b9-b37f-fdd083fc3b95}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[TrackingInput := THIS^._fTrackingInput;]]></ST>
-        </Implementation>
-      </Get>
-      <Set Name="Set" Id="{715f49a0-3756-4c2d-b840-4da95b9b1ed2}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[THIS^._fTrackingInput := TrackingInput;]]></ST>
-        </Implementation>
-      </Set>
-    </Property>
-    <Property Name="TrackingTimeConstant" Id="{ed14ae97-8334-4c39-9c51-575a6eca0eae}">
+    <Property Name="Tt" Id="{ed14ae97-8334-4c39-9c51-575a6eca0eae}">
       <Declaration><![CDATA[(*
 Gets or sets the tracking time constant (Tt).
 
@@ -154,13 +147,13 @@ Controls how quickly the integrator unwinds after saturation. A typical
 starting value is ``SQRT(Tn * Td)``. Setting it to ``LTIME#0`` disables
 the back-calculation correction entirely.
 *)
-PROPERTY TrackingTimeConstant : LTIME]]></Declaration>
+PROPERTY Tt : LTIME]]></Declaration>
       <Get Name="Get" Id="{2e4721fc-5d81-4ec9-a4d6-2c1c540d575a}">
         <Declaration><![CDATA[VAR
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[TrackingTimeConstant := THIS^._tTrackingTimeConstant;]]></ST>
+          <ST><![CDATA[Tt := THIS^._tTt;]]></ST>
         </Implementation>
       </Get>
       <Set Name="Set" Id="{628f1f72-4e40-4a3c-b188-cdb58589bcd0}">
@@ -168,7 +161,7 @@ END_VAR
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[THIS^._tTrackingTimeConstant := TrackingTimeConstant;]]></ST>
+          <ST><![CDATA[THIS^._tTt := Tt;]]></ST>
         </Implementation>
       </Set>
     </Property>

@@ -1,16 +1,20 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
   <POU Name="FB_Integrator" Id="{7ca0c08c-f207-4eb5-a0d9-54bd93c65f82}" SpecialFunc="None">
     <Declaration><![CDATA[(*
 Integrates the input error signal over time.
 
-The output accumulates the input scaled by the integral gain :math:`K_i = 1 / T_n`.
-Setting :attr:`Tn` to ``LTIME#0`` disables integration, holding the output at zero.
+The output accumulates the input scaled by the integral gain :math:`K_i = 1 / T_n`,
+and is clamped to [:attr:`Minimum`, :attr:`Maximum`] on every cycle.
+Setting :attr:`Tn` to ``LTIME#0`` disables integration, setting the output to zero.
 
 Use :meth:`Sync` to preset the integrator state for bumpless transfer when
 switching from manual to automatic mode.
 
 .. note::
+   Set :attr:`Maximum` before :attr:`Minimum` to ensure the clamp guard applies
+   correctly.
+
    Use ``FB_init`` to set :attr:`tTn` at declaration time.
 *)
 {attribute 'no_assign'}
@@ -19,9 +23,11 @@ switching from manual to automatic mode.
 FUNCTION_BLOCK FB_Integrator EXTENDS FB_SisoComponent
 IMPLEMENTS FsCommon.I_Runnable, I_Resettable
 VAR
-	_tTn   : LTIME; // Integral action time (Tn).
-	_bSync : BOOL;  // Triggers a bumpless transfer on the next Run call.
-	_fSync : LREAL; // Target integrator state for bumpless transfer.
+	_tTn   		: LTIME; // Integral action time (Tn).
+	_bSync 		: BOOL;  // Triggers a bumpless transfer on the next Run call.
+	_fSync 		: LREAL; // Target integrator state for bumpless transfer.
+	_fMaximum   : LREAL := FsCommon.GVL_TypeValueLimits.LREAL_MAX; // Upper output clamp. Clamped to >= Minimum.
+	_fMinimum   : LREAL := FsCommon.GVL_TypeValueLimits.LREAL_MIN; // Lower output clamp. Clamped to <= Maximum.
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
@@ -38,6 +44,56 @@ END_VAR
         <ST><![CDATA[THIS^._tTn := tTn;]]></ST>
       </Implementation>
     </Method>
+    <Property Name="Maximum" Id="{b7589c00-7ee0-4541-93bc-2e57fc1f93bc}">
+      <Declaration><![CDATA[(*
+Gets or sets the upper output clamp.
+
+Internally clamped to be greater than or equal to :attr:`Minimum`.
+Set this before :attr:`Minimum` to ensure the guard applies correctly.
+*)
+PROPERTY Maximum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{983b9dbc-0394-452d-bab5-7875c0d74c9b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Maximum := THIS^._fMaximum;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{608c7a5d-ebf1-4e44-8ba6-ce7a9f38c421}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fMaximum := MAX(THIS^._fMinimum, Maximum);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Minimum" Id="{fc41bd10-44e9-4e18-8de2-b1ec342a3857}">
+      <Declaration><![CDATA[(*
+Gets or sets the lower output clamp.
+
+Internally clamped to be less than or equal to :attr:`Maximum`.
+Set :attr:`Maximum` before this property to ensure the guard applies correctly.
+*)
+PROPERTY Minimum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{c60fdb29-7826-4aae-ac55-ecaabda6d860}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Minimum := THIS^._fMinimum;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{43bfea17-b59b-49cd-8d17-5fa230e5164e}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fMinimum := MIN(THIS^._fMaximum, Minimum);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
     <Method Name="Reset" Id="{063453a7-8d9c-4532-8c8c-9af5dcadd63c}">
       <Declaration><![CDATA[(* Clears the integrator state and output. *)
 METHOD Reset
@@ -83,8 +139,12 @@ IF THIS^._tTn = LTIME#0S THEN
 	RETURN;
 END_IF
 
-THIS^._fOutput := THIS^._fOutput + 
-	(1.0 / (TO_LREAL(THIS^._tTn) / TO_LREAL(LTIME#1S))) * THIS^._fInput * fT;]]></ST>
+THIS^._fOutput := LIMIT(
+	THIS^._fMinimum, 
+	THIS^._fOutput + 
+		(1.0 / (TO_LREAL(THIS^._tTn) / TO_LREAL(LTIME#1S))) * THIS^._fInput * fT,
+	THIS^._fMaximum
+);]]></ST>
       </Implementation>
     </Method>
     <Method Name="Sync" Id="{0664633e-4340-481c-9446-e6a9c9436467}">

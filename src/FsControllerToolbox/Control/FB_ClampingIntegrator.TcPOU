@@ -1,27 +1,30 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
   <POU Name="FB_ClampingIntegrator" Id="{a441b0c8-8498-4f29-b456-b5f596914d8c}" SpecialFunc="None">
     <Declaration><![CDATA[(*
-Integrates the input error signal with output clamping and clamping-based anti-windup.
+Integrates the input error signal with comparitor-based anti-windup.
 
-Extends :class:`FB_Integrator` by clamping the output to
-[:attr:`Minimum`, :attr:`Maximum`] and halting integration when the output is
-saturated and the input would push further into saturation.
+Extends :class:`FB_Integrator` by suppressing integration when the
+:attr:`ComparitorInput` indicates saturation and the input would push
+further into saturation. The suppression behaviour is controlled by :attr:`Mode`.
+
+:attr:`ComparitorInput` is typically the :attr:`~FB_Clamp.Residual` of an
+:class:`FB_Clamp` block placed after the PID summation.
 
 .. note::
    Set :attr:`Maximum` before :attr:`Minimum` to ensure the clamp guard applies
    correctly.
-   
-   Use ``FB_init`` to set :attr:`tTn`, :attr:`fMaximum` and :attr:`fMinimum` at declaration time.
+
+   Use ``FB_init`` to set :attr:`tTn` and :attr:`eMode` at declaration time.
 *)
 {attribute 'no_assign'}
 {attribute 'enable_dynamic_creation'}
 {attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
 FUNCTION_BLOCK FB_ClampingIntegrator EXTENDS FB_Integrator
 VAR
-	_fMaximum          : LREAL := FsCommon.GVL_TypeValueLimits.LREAL_MAX; // Upper output clamp. Clamped to >= Minimum.
-	_fMinimum          : LREAL := FsCommon.GVL_TypeValueLimits.LREAL_MIN; // Lower output clamp. Clamped to <= Maximum.
+	_fComparitorInput  : LREAL;
 	_bAntiWindupActive : BOOL; // TRUE when the output is saturated and integration is halted.
+	_eMode			   : E_AntiWindupMode;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
@@ -38,69 +41,70 @@ END_VAR
         </Implementation>
       </Get>
     </Property>
-    <Method Name="FB_init" Id="{a45353f1-f0ab-4dd9-94e1-fd8d57d5709a}">
+    <Property Name="ComparitorInput" Id="{60d2ba06-28ae-460a-8c6f-a68a379b682b}">
+      <Declaration><![CDATA[(*
+Gets or sets the comparitor input.
+
+This is typically the :attr:`~FB_Clamp.Residual` of an :class:`FB_Clamp` block
+placed after the PID summation. A positive value indicates the unsaturated sum
+exceeded the clamp maximum; a negative value indicates it fell below the clamp
+minimum. When this value and :attr:`Input` have the same sign, integration is
+suppressed according to :attr:`Mode`.
+*)
+PROPERTY ComparitorInput : LREAL]]></Declaration>
+      <Get Name="Get" Id="{37e73885-9d12-4246-a885-24bf09368a28}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ComparitorInput := THIS^._fComparitorInput;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{9e64b35d-813d-4577-b74d-e59b4090ca93}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fComparitorInput := ComparitorInput;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{bbf5ee33-167e-47cb-bbba-20901312b800}">
       <Declaration><![CDATA[METHOD FB_init : BOOL
 VAR_INPUT
 	bInitRetains : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
 	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
 	tTn          : LTIME; // Integral action time. LTIME#0 disables integration.
-	fMaximum     : LREAL; // Upper output clamp.
-	fMinimum     : LREAL; // Lower output clamp.
+	eMode		 : E_AntiWindupMode; 
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[THIS^._tTn    := tTn;
-THIS^.Maximum := fMaximum;
-THIS^.Minimum := fMinimum;]]></ST>
+        <ST><![CDATA[THIS^._tTn   := tTn;
+THIS^._eMode := eMode;]]></ST>
       </Implementation>
     </Method>
-    <Property Name="Maximum" Id="{b7589c00-7ee0-4541-93bc-2e57fc1f93bc}">
+    <Property Name="Mode" Id="{deefee7d-dda7-4e67-8825-66b7b0007a98}">
       <Declaration><![CDATA[(*
-Gets or sets the upper output clamp.
+Gets or sets the anti-windup mode.
 
-Internally clamped to be greater than or equal to :attr:`Minimum`.
-Set this before :attr:`Minimum` to ensure the guard applies correctly.
+Controls the integrator behaviour when saturation is detected via
+:attr:`ComparitorInput`. See :class:`E_AntiWindupMode` for available modes.
 *)
-PROPERTY Maximum : LREAL]]></Declaration>
-      <Get Name="Get" Id="{983b9dbc-0394-452d-bab5-7875c0d74c9b}">
+PROPERTY Mode : E_AntiWindupMode]]></Declaration>
+      <Get Name="Get" Id="{d27527bd-4a92-400d-8649-37639a631ce9}">
         <Declaration><![CDATA[VAR
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[Maximum := THIS^._fMaximum;]]></ST>
+          <ST><![CDATA[Mode := THIS^._eMode;]]></ST>
         </Implementation>
       </Get>
-      <Set Name="Set" Id="{608c7a5d-ebf1-4e44-8ba6-ce7a9f38c421}">
+      <Set Name="Set" Id="{3a1c6645-4bd4-4157-a013-6fca2c2f8b6d}">
         <Declaration><![CDATA[VAR
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[THIS^._fMaximum := MAX(THIS^._fMinimum, Maximum);]]></ST>
-        </Implementation>
-      </Set>
-    </Property>
-    <Property Name="Minimum" Id="{fc41bd10-44e9-4e18-8de2-b1ec342a3857}">
-      <Declaration><![CDATA[(*
-Gets or sets the lower output clamp.
-
-Internally clamped to be less than or equal to :attr:`Maximum`.
-Set :attr:`Maximum` before this property to ensure the guard applies correctly.
-*)
-PROPERTY Minimum : LREAL]]></Declaration>
-      <Get Name="Get" Id="{c60fdb29-7826-4aae-ac55-ecaabda6d860}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[Minimum := THIS^._fMinimum;]]></ST>
-        </Implementation>
-      </Get>
-      <Set Name="Set" Id="{43bfea17-b59b-49cd-8d17-5fa230e5164e}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[THIS^._fMinimum := MIN(THIS^._fMaximum, Minimum);]]></ST>
+          <ST><![CDATA[THIS^._eMode := Mode;]]></ST>
         </Implementation>
       </Set>
     </Property>
@@ -121,7 +125,7 @@ Advances the clamping integrator by one time step.
 
 .. note::
    Must be called once per cycle on a single PLC task. If :attr:`Tn` is
-   ``LTIME#0`` the output is set to zero.
+   ``LTIME#0`` the output is set to zero and anti-windup is cleared.
 *)
 METHOD Run
 VAR_INST
@@ -131,6 +135,8 @@ VAR_INST
 	fT          : LREAL;
 	{attribute 'hide'}
 	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+	{attribute 'hide'}
+	fbTrig 		: F_TRIG;
 END_VAR
 VAR
 END_VAR]]></Declaration>
@@ -156,17 +162,30 @@ IF THIS^._tTn = LTIME#0S THEN
 	RETURN;
 END_IF
 
-IF NOT THIS^._bAntiWindupActive OR
-   (THIS^._fOutput >= THIS^._fMaximum AND THIS^._fInput < 0) OR
-   (THIS^._fOutput <= THIS^._fMinimum AND THIS^._fInput > 0) THEN
-	THIS^._fOutput := THIS^._fOutput +
-		(1.0 / (TO_LREAL(THIS^._tTn) / TO_LREAL(LTIME#1S))) * THIS^._fInput * fT;
+
+THIS^._bAntiWindupActive := (-THIS^._fComparitorInput < 0.0 AND THIS^._fInput > 0.0) OR 
+                            (-THIS^._fComparitorInput > 0.0 AND THIS^._fInput < 0.0);
+							
+fbTrig(CLK := THIS^._bAntiWindupActive);
+IF fbTrig.Q AND THIS^._eMode = E_AntiWindupMode.Off THEN 
+	THIS^._bAntiWindupActive := TRUE;
+END_IF
+							
+IF THIS^._bAntiWindupActive THEN
+	CASE THIS^._eMode OF 
+		E_AntiWindupMode.Hold:;
+		E_AntiWindupMode.Off:
+			THIS^._fOutput := 0.0;
+	END_CASE
+ELSE
+	THIS^._fOutput := LIMIT(
+		THIS^._fMinimum, 
+		THIS^._fOutput + (1.0 / (TO_LREAL(THIS^._tTn) / TO_LREAL(LTIME#1S))) * THIS^._fInput * fT,
+		THIS^._fMaximum
+	);
 END_IF
 
-THIS^._fOutput           := LIMIT(THIS^._fMinimum, THIS^._fOutput, THIS^._fMaximum);
-THIS^._bAntiWindupActive := 
-	(THIS^._fOutput = THIS^._fMaximum AND THIS^._fInput > 0) OR
-	(THIS^._fOutput = THIS^._fMinimum AND THIS^._fInput < 0);
+
 ]]></ST>
       </Implementation>
     </Method>

@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <EnumerationTextList Name="E_AntiWindupMode" Id="{d454041f-725a-4fd9-8138-fb1750f0ea89}">
+    <Declaration><![CDATA[(*
+Specifies the anti-windup behaviour of :class:`FB_ClampingIntegrator` when
+saturation is detected via :attr:`~FB_ClampingIntegrator.ComparitorInput`.
+*)
+{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE E_AntiWindupMode :
+(
+	// Holds the integrator output at its current value while saturation is active.
+	Hold := 0,
+	// Zeroes the integrator output on the rising edge of saturation detection.
+	Off  := 1
+)BYTE;
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"Hold"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Off"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{05d31add-6e0a-402d-ae81-ccf09b9976f9}</v>
+          <v n="GuidReInit">{6e512faa-b0fe-47b8-bf7f-412ecfa301da}</v>
+          <v n="GuidExitX">{e3eede25-aefc-4776-9bba-6b36bd93b488}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>
