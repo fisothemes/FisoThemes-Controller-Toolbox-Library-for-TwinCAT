@@ -6,7 +6,7 @@ Specifies the behaviour of :itf:`FB_Deadband` when the input is within the band.
 *)
 {attribute 'qualified_only'}
 {attribute 'strict'}
-{attrubute 'to_string'}
+{attribute 'to_string'}
 TYPE E_DeadbandMode :
 (
 	Hold := 0, // Output holds its last value while the input is within the band.
