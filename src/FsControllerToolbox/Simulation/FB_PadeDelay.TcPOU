@@ -1,0 +1,168 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_PadeDelay" Id="{d713d493-134d-0d54-017e-1ab5353b0e96}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Approximates a transport delay (dead time) using a second-order Padé approximation.
+
+The continuous-time transfer function is:
+
+.. math::
+
+   G(s) = \frac{1 - \frac{L}{2}s + \frac{L^2}{12}s^2}{1 + \frac{L}{2}s + \frac{L^2}{12}s^2}
+
+where :math:`L` is :attr:`DelayTime` in seconds. The approximation is discretised
+using the Tustin (bilinear) method with frequency pre-warping.
+
+The output initially moves in the opposite direction to the input before settling
+at the correct delayed value. This is a known characteristic of Padé approximations
+and not a bug.
+
+A delay of ``LTIME#0`` passes the input through unchanged.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`tDelayTime` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_PadeDelay EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_tDelayTime : LTIME; // Approximate transport delay (L).
+	{attribute 'hide'}
+	_fY1        : LREAL; // y[k-1]
+	{attribute 'hide'}
+	_fY2        : LREAL; // y[k-2]
+	{attribute 'hide'}
+	_fU1        : LREAL; // u[k-1]
+	{attribute 'hide'}
+	_fU2        : LREAL; // u[k-2]
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="DelayTime" Id="{5b54f25c-f81a-0151-1243-4a685f8d9fd6}">
+      <Declaration><![CDATA[(*
+Gets or sets the approximate transport delay.
+
+This is the time between a change in the input and when that change appears
+at the output. Longer values produce a more sluggish, harder-to-control process.
+A value of ``LTIME#0`` passes the input through unchanged.
+
+Note that the Padé approximation causes the output to initially move in the
+opposite direction to the input. This effect is more pronounced for longer
+delays relative to the cycle time.
+*)
+PROPERTY DelayTime : LTIME]]></Declaration>
+      <Get Name="Get" Id="{666a8899-a2d1-08d4-0d36-b710a57bb61c}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[DelayTime := THIS^._tDelayTime;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{2e39fcb1-ac21-0f91-3cbd-9b4cc38f8020}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._tDelayTime := DelayTime;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{81204ddb-7205-0852-0a3f-0a7bd91505a1}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	tDelayTime   : LTIME; // Approximate transport delay.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{898365af-834f-0d2f-0292-5e1f7d5333a8}">
+      <Declaration><![CDATA[(* Clears all internal state, returning the delay approximation to its initial conditions. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fY1     := 0;
+THIS^._fY2     := 0;
+THIS^._fU1     := 0;
+THIS^._fU2     := 0;
+THIS^._fOutput := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{b6004933-a9ed-0961-34b5-e62b6143229f}">
+      <Declaration><![CDATA[(*
+Advances the Padé delay by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If the measured cycle
+   time is zero or :attr:`DelayTime` is ``LTIME#0`` the input passes through
+   unchanged.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fT          : LREAL;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fL   : LREAL;
+	fL2  : LREAL;
+	fA0  : LREAL;
+	fA1  : LREAL;
+	fA2  : LREAL;
+	fB0  : LREAL;
+	fB1  : LREAL;
+	fB2  : LREAL;
+	fDen : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(NOT fbTaskCycle.HasChanged);
+
+IF THIS^._tDelayTime = LTIME#0S THEN
+	THIS^._fOutput := THIS^._fInput;
+	RETURN;
+END_IF
+
+fL  := TO_LREAL(THIS^._tDelayTime) / TO_LREAL(LTIME#1S);
+fL2 := fL * fL;
+
+// Tustin discretisation of second-order Padé
+// Continuous: (12 - 6Ls + L²s²) / (12 + 6Ls + L²s²)
+fa0  := 12.0 * fT * fT + 6.0 * fL * fT * 2.0 + fL2 * 4.0;
+fA1  := 24.0 * fT * fT - fL2 * 8.0;
+fA2  := 12.0 * fT * fT - 6.0 * fL * fT * 2.0 + fL2 * 4.0;
+fB0  := fA2;
+fB1  := fA1;
+fB2  := fA0;
+fDen := fA0;
+
+THIS^._fOutput :=
+	(fB0 * THIS^._fInput + fB1 * THIS^._fU1 + fB2 * THIS^._fU2
+	- fA1 * THIS^._fY1 - fA2 * THIS^._fY2) / fDen;
+
+THIS^._fY2 := THIS^._fY1;
+THIS^._fY1 := THIS^._fOutput;
+THIS^._fU2 := THIS^._fU1;
+THIS^._fU1 := THIS^._fInput;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
