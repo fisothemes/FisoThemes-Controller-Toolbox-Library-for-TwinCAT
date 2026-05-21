@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
   <POU Name="PLAYGROUND" Id="{d78796e8-f8c4-458f-9526-8acd467209b8}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM INTERNAL PLAYGROUND
 VAR
@@ -7,6 +7,13 @@ VAR
 	fOutput   : LREAL;
 	fError    : LREAL;
 	fbPlant   : FB_FirstOrderPlant(fGain := 2.0, tTau := LTIME#5S);
+	fbPID	  : FB_PID(
+					fKp := 2.0,
+					tTn := LTIME#5S,
+					tTv := LTIME#1S,
+					tTd := LTIME#200MS,
+					fMaximum := 100, 
+					fMinimum := 0);
 	fbP       : FB_ProportionalGain(fKp := 2.0);
 	fbI       : FB_ClampingIntegrator(
 					tTn   := LTIME#5S,
@@ -19,10 +26,20 @@ END_VAR
     <Implementation>
       <ST><![CDATA[fOutput := fbPlant.Output;
 
+fbPID.Setpoint := fSetpoint;
+fbPID.Feedback := fOutput;
+fError    	   := fbPID.Error;
+
+fbPID.Run();
+
+fbPlant.Input := fbPID.Output;
+fbPlant.Run();
+
+RETURN;
 fError := fSetpoint - fOutput;
 
 fbP.Input         := fError; fbP.Run();
-fbD.Input         := fbP.Output; fbD.Run();
+fbD.Input         := -fOutput;(* fbP.Output; *) fbD.Run();
 fbI.Input         := fbP.Output;
 fbI.ComparatorInput := fbClamp.Residual;
 fbI.Run();

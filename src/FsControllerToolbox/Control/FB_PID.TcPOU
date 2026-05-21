@@ -1,0 +1,463 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_PID" Id="{89979a6b-f7ab-0c11-132d-ce67a3478ccc}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Ideal-form PID controller with clamped output, comparator-based anti-windup,
+and bumpless manual-to-auto transfer.
+
+The control output is computed as:
+
+.. math::
+
+   u(t) = K_p \left( e(t) + \frac{1}{T_n} \int e(t)\, dt + T_v \frac{d(-y)}{dt} \right)
+
+where :math:`e(t) = SP - PV` is the error, :math:`-y` is the negated process
+variable (derivative on measurement, avoiding derivative kick on setpoint steps).
+
+In :attr:`~E_PIDMode.Manual` mode the output tracks :attr:`Setpoint` directly
+through the output clamp. The integrator is continuously primed so that
+switching to :attr:`~E_PIDMode.Auto` produces no jump in output.
+
+.. note::
+   Set :attr:`Maximum` before :attr:`Minimum` to ensure the clamp guard applies
+   correctly. The same applies to :attr:`IntegratorBounds`.
+
+   Use ``FB_init`` to set :attr:`fKp`, :attr:`tTn`, :attr:`tTv` and :attr:`tTd`,
+   :attr:`fMaximum`, and :attr:`fMinimum` at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_PID EXTENDS FB_SoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable, I_Bounded
+VAR
+	_fSetpoint  : LREAL; // Setpoint (SP).
+	_fFeedback  : LREAL; // Process variable (PV).
+	_fError     : LREAL; // Current error (SP - PV).
+	_eMode      : E_PIDMode; // Operating mode. Auto or Manual.
+	_fbClamp    : FB_Clamp(
+					fMaximum := FsCommon.GVL_TypeValueLimits.LREAL_MAX, 
+					fMinimum := FsCommon.GVL_TypeValueLimits.LREAL_MIN); // Bounds of the controller's Output.
+	_fbP        : FB_ProportionalGain(fKp := 2.0); // P Component.
+	_fbI        : FB_ClampingIntegrator(tTn := LTIME#0S, eMode := E_AntiWindupMode.Hold); // I Component.
+	_fbD        : FB_Differentiator(tTv := LTIME#0S, tTd := LTIME#200MS); // D Components.
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="AntiWindupActive" Id="{7680057c-1672-0f98-2f76-b6b9fe415b38}">
+      <Declaration><![CDATA[(* Gets whether the integrator is currently saturated and integration is halted or disabled. *)
+PROPERTY AntiWindupActive : BOOL]]></Declaration>
+      <Get Name="Get" Id="{1878c6ea-23be-035f-0cce-bdb86aa7d888}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AntiWindupActive := THIS^._fbI.AntiWindupActive;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="AntiWindupMode" Id="{69f5a4c8-1787-0253-297c-ce29d1affb76}">
+      <Declaration><![CDATA[(*
+Gets or sets the anti-windup mode for the integrator.
+
+See :class:`E_AntiWindupMode` for available modes.
+*)
+PROPERTY AntiWindupMode : E_AntiWindupMode]]></Declaration>
+      <Get Name="Get" Id="{250e4b7a-0d44-00ca-371f-991f38c01dd7}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AntiWindupMode := THIS^._fbI.Mode;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{2e0dafdc-ee5f-00d0-3035-cd71864e0fcd}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbI.Mode := AntiWindupMode;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Error" Id="{dcb0d2fc-5239-05fe-2482-88e62f04bb2d}">
+      <Declaration><![CDATA[(* Gets the current error (Setpoint - Feedback, SP - PV). *)
+PROPERTY Error : LREAL]]></Declaration>
+      <Get Name="Get" Id="{4753168b-558c-0d49-3340-d203d9b9da9b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Error := THIS^._fError;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="FB_init" Id="{8a03ceaa-7a85-0f7e-285f-8be85469e2b1}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fKp             : LREAL;          // Proportional gain.
+	tTn             : LTIME;          // Integral action time. LTIME#0 disables the I term.
+	tTv             : LTIME;          // Rate time. LTIME#0 disables the D term.
+	tTd             : LTIME;          // Derivative damping time.
+	fMaximum        : LREAL;          // Upper output clamp.
+	fMinimum        : LREAL;          // Lower output clamp.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fbP.Kp := fKp;
+THIS^._fbI.Tn := tTn;
+THIS^._fbD.Tv := tTv;
+THIS^._fbD.Td := tTd;
+THIS^.Maximum := fMaximum;
+THIS^.Minimum := fMinimum;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Feedback" Id="{bbf32f71-0992-0288-2dcd-a78e0ab7a90d}">
+      <Declaration><![CDATA[(*
+Gets or sets the process variable (PV). 
+
+Used to compute the error and the derivative on measurement.
+*)
+PROPERTY Feedback : LREAL]]></Declaration>
+      <Get Name="Get" Id="{2090eaf6-ac32-02da-25d2-4cfc8fb9c8c5}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Feedback := THIS^._fFeedback;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{6c2331da-68be-09fd-3b98-14267975b3bc}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fFeedback := Feedback;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="IntegratorBounds" Id="{955fa142-9ffe-0558-1c61-9fd5d1f375a1}">
+      <Declaration><![CDATA[(*
+Gets the integrator bounds interface.
+
+Use this to set independent upper and lower limits on the integrator output,
+separate from the output clamp. This is useful when you want tighter integrator 
+limits than the output clamp.
+*)
+PROPERTY IntegratorBounds : I_Bounded]]></Declaration>
+      <Get Name="Get" Id="{3b69ec41-df73-07e2-0f06-534142b80c89}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[IntegratorBounds := THIS^._fbI;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{f5ac0103-04f8-0f9e-1c9e-89f53e1c2855}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[RETURN(IntegratorBounds = 0);
+THIS^._fbI.Maximum := IntegratorBounds.Maximum;
+THIS^._fbI.Minimum := IntegratorBounds.Minimum;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Kp" Id="{c86695ac-47bf-03ee-1799-17ced016f5d9}">
+      <Declaration><![CDATA[(*
+Gets or sets the proportional gain (Kp).
+
+Scales the response to the current error. A higher value reacts more strongly
+to error but risks overshoot and oscillation. A value of 0 disables the P term.
+*)
+PROPERTY Kp : LREAL]]></Declaration>
+      <Get Name="Get" Id="{71bc4506-2561-0f50-0fb1-02d93c95a4e7}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Kp := THIS^._fbP.Kp;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{52112010-534e-0417-2777-49d30d21db42}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbP.Kp := Kp;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Maximum" Id="{52491403-9115-0b9f-155d-aeb8a99609dc}">
+      <Declaration><![CDATA[(*
+Gets or sets the upper output clamp.
+
+Internally clamped to be greater than or equal to :attr:`Minimum`.
+Set this before :attr:`Minimum` to ensure the guard applies correctly.
+*)
+PROPERTY Maximum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{ea1269e6-64bd-0c5f-39e9-4599f81c9026}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Maximum := THIS^._fbClamp.Maximum;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{d0e0ddf7-f7ae-02fc-32d8-6d590a2ce1b7}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbClamp.Maximum := Maximum;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Minimum" Id="{0c80baeb-5957-09b7-207f-1ae4aba6f419}">
+      <Declaration><![CDATA[(*
+Gets or sets the lower output clamp.
+
+Internally clamped to be less than or equal to :attr:`Maximum`.
+Set :attr:`Maximum` before this property to ensure the guard applies correctly.
+*)
+PROPERTY Minimum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{6f236d96-6bf6-0aa9-059b-d7c1fb984c66}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Minimum := THIS^._fbClamp.Minimum;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{f4ede576-aa74-07e0-2586-f8cfe71473d0}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbClamp.Minimum := Minimum;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Mode" Id="{5f1b210f-61bb-035c-217b-c702638e2b64}">
+      <Declaration><![CDATA[(*
+Gets or sets the operating mode.
+
+In :attr:`~E_PIDMode.Auto` mode the output is computed from :attr:`Setpoint` and
+:attr:`Feedback`. In :attr:`~E_PIDMode.Manual` mode the output tracks
+:attr:`Setpoint` directly through the output clamp. The integrator is continuously
+primed in manual mode so switching to auto produces no jump in output.
+*)
+PROPERTY Mode : E_PIDMode]]></Declaration>
+      <Get Name="Get" Id="{ce771e3a-cbfe-09dd-2c1a-12e944dca44b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Mode := THIS^._eMode;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{9095fbea-9b84-08e1-07fc-e9b90e6d2397}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._eMode := Mode;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{1b65f8d9-dfb5-0fd9-3919-65e5146dc878}">
+      <Declaration><![CDATA[(* Resets all internal components and sets the output to zero. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fbP.Reset();
+THIS^._fbI.Reset();
+THIS^._fbD.Reset();
+THIS^._fbClamp.Input := 0;
+THIS^._fbClamp.Run();
+THIS^._fOutput 		 := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{8af5fa9d-071d-0d9f-1916-55e74f5c100d}">
+      <Declaration><![CDATA[(*
+Advances the PID controller by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF FsCommon.F_ResetOnTrue(bInit) THEN
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(NOT fbTaskCycle.HasChanged);
+
+THIS^._fError := THIS^._fSetpoint - THIS^._fFeedback;
+
+THIS^._fbP.Input := THIS^._fError;  THIS^._fbP.Run();
+THIS^._fbD.Input := -THIS^._fFeedback; THIS^._fbD.Run();
+
+CASE THIS^._eMode OF
+	E_PIDMode.Auto:
+		THIS^._fbI.Input           := THIS^._fbP.Output;
+		THIS^._fbI.ComparatorInput := THIS^._fbClamp.Residual;
+		THIS^._fbI.Run();
+
+		THIS^._fbClamp.Input := THIS^._fbP.Output + THIS^._fbI.Output + THIS^._fbD.Output;
+		THIS^._fbClamp.Run();
+		THIS^._fOutput := THIS^._fbClamp.Output;
+
+	E_PIDMode.Manual:
+		THIS^._fbI.Sync(THIS^._fSetpoint - THIS^._fbP.Output - THIS^._fbD.Output);
+		THIS^._fbI.Input           := THIS^._fbP.Output;
+		THIS^._fbI.ComparatorInput := 0;
+		THIS^._fbI.Run();
+
+		THIS^._fbClamp.Input := THIS^._fSetpoint;
+		THIS^._fbClamp.Run();
+		THIS^._fOutput := THIS^._fbClamp.Output;
+ELSE
+	THIS^._fbP.Reset();
+	THIS^._fbI.Reset();
+	THIS^._fbD.Reset();
+	
+	THIS^._fOutput := 0.0;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Setpoint" Id="{7281e739-82e0-000c-0881-6793dd59eae8}">
+      <Declaration><![CDATA[(* 
+Gets or sets the setpoint. 
+
+In :attr:`~E_PIDMode.Manual` mode this is used as 
+the manual output value, routed directly through the output clamp.
+*)
+PROPERTY Setpoint : LREAL]]></Declaration>
+      <Get Name="Get" Id="{a2cc71de-0335-0f1d-38a1-3ee416188c77}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Setpoint := THIS^._fSetpoint;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{28296c83-2a2c-0d5c-054d-1c8ead28ebd1}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fSetpoint := LIMIT(THIS^.Minimum, Setpoint, THIS^.Maximum);
+]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="SyncTn" Id="{664c2688-1e61-08aa-1c55-1787cffdfc4e}">
+      <Declaration><![CDATA[(*
+Presets the integrator state to match a given output value on the next :meth:`Run` call.
+
+Use this when switching from manual to automatic mode with a known starting output,
+or when initialising the controller to a steady-state value to avoid an initial transient.
+*)
+METHOD SyncTn
+VAR_INPUT
+    fValue : LREAL; // Target integrator state.
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fbI.Sync(fValue);]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Td" Id="{70a9153d-8d98-04a4-285f-51af344f2bb7}">
+      <Declaration><![CDATA[(*
+Gets or sets the derivative damping time (Td).
+
+Filters the derivative signal to reduce sensitivity to measurement noise.
+A longer value gives more filtering but weakens derivative action. ``LTIME#0``
+removes the filter entirely, not recommended when the measurement is noisy.
+*)
+PROPERTY Td : LTIME]]></Declaration>
+      <Get Name="Get" Id="{e5662dc9-23f6-0821-3fa4-275fc7521df7}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Td := THIS^._fbD.Td;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{42c59e98-476f-0c64-2e43-a8b4464e2e79}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbD.Td := Td;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Tn" Id="{0f35409f-1bc8-0515-2bf8-9b6adce3967b}">
+      <Declaration><![CDATA[(*
+Gets or sets the integral action time (Tn).
+
+Controls how quickly accumulated error is corrected. A shorter value eliminates
+steady-state error, faster but risks overshoot. A longer value is more stable but
+slower to correct. ``LTIME#0`` disables the I term entirely.
+*)
+PROPERTY Tn : LTIME]]></Declaration>
+      <Get Name="Get" Id="{821b3dc8-3d4e-0161-0662-3f66f7bef466}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Tn := THIS^._fbI.Tn;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{47d23002-41f4-08c0-0a09-cb6312c6beaa}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbI.Tn := Tn;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Tv" Id="{23e4641c-ef36-0418-16dc-940b72538a43}">
+      <Declaration><![CDATA[(*
+Gets or sets the derivative action time (Tv).
+
+Controls how strongly the controller reacts to changes in the process variable (Feedback).
+A longer value dampens sudden changes and reduces overshoot, but too much can
+cause instability. ``LTIME#0`` disables the D term entirely.
+*)
+PROPERTY Tv : LTIME]]></Declaration>
+      <Get Name="Get" Id="{2bededd1-39b8-0070-21e2-91b9d5a8360b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Tv := THIS^._fbD.Tv;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{d315dc87-0413-0dc8-0025-79f75d7e24ba}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbD.Tv := Tv;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>
