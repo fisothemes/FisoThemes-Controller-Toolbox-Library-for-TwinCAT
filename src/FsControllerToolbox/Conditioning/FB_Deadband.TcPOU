@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
   <POU Name="FB_Deadband" Id="{93518208-4727-44d3-80ce-cf13d655b560}" SpecialFunc="None">
     <Declaration><![CDATA[(*
 Suppresses small input signals within a configurable band.
@@ -13,15 +13,15 @@ the band the input passes through unchanged.
    Use ``FB_init`` to set :attr:`fMinimum`, :attr:`fMaximum`, and :attr:`eMode`
    at declaration time.
 *)
-{attribute 'no_assign'}
 {attribute 'enable_dynamic_creation'}
 {attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
 FUNCTION_BLOCK FINAL FB_Deadband EXTENDS FB_SisoComponent
 IMPLEMENTS FsCommon.I_Runnable, I_Resettable
 VAR
-	_fMinimum : LREAL; // Lower bound of the deadband. Clamped to <= Maximum.
-	_fMaximum : LREAL; // Upper bound of the deadband. Clamped to >= Minimum.
-	_eMode    : E_DeadbandMode; // Output behaviour when input is within the band.
+	_fMinimum  : LREAL; // Lower bound of the deadband. Clamped to <= Maximum.
+	_fMaximum  : LREAL; // Upper bound of the deadband. Clamped to >= Minimum.
+	_eMode     : E_DeadbandMode; // Output behaviour when input is within the band.
+	_bIsActive : BOOL; // TRUE when input is within deadband [Minimum..:=Maximum].
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
@@ -42,6 +42,22 @@ THIS^.Minimum  := fMinimum;
 THIS^._eMode   := eMode;]]></ST>
       </Implementation>
     </Method>
+    <Property Name="IsActive" Id="{cf05cb7f-66d8-00a3-1e06-75404e0d19a9}">
+      <Declaration><![CDATA[(*
+Gets whether the input is within the deadband's bounds.
+
+``TRUE`` when the output is being held or zeroed.
+*)
+PROPERTY IsActive : BOOL]]></Declaration>
+      <Get Name="Get" Id="{9cac022d-e432-0820-1a36-72978a7b271a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[IsActive := THIS^._bIsActive;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
     <Property Name="Maximum" Id="{0d037737-23e6-4420-b270-cc5720e04509}">
       <Declaration><![CDATA[(*
 Gets or sets the upper bound of the deadband.
@@ -149,7 +165,9 @@ END_VAR
         <ST><![CDATA[THIS^._fMaximum := MAX(THIS^._fMinimum, THIS^._fMaximum);
 THIS^._fMinimum := MIN(THIS^._fMinimum, THIS^._fMaximum);
 
-IF THIS^._fInput >= THIS^._fMinimum AND THIS^._fInput <= THIS^._fMaximum THEN
+THIS^._bIsActive := THIS^._fInput >= THIS^._fMinimum AND THIS^._fInput <= THIS^._fMaximum;
+
+IF THIS^._bIsActive  THEN
     CASE THIS^._eMode OF
         E_DeadbandMode.Zero:
             THIS^._fOutput := 0;
