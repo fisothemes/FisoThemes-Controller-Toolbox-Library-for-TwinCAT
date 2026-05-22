@@ -64,6 +64,9 @@
     <Compile Include="Control\FB_Differentiator.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Control\FB_ExtendedStateObserver.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Control\FB_Integrator.TcPOU">
       <SubType>Code</SubType>
     </Compile>

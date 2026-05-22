@@ -1,0 +1,245 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
+  <POU Name="FB_ExtendedStateObserver" Id="{d782ba67-7b4e-0aec-220f-02cc7ef8d2ab}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Estimates the process output and total disturbance for use in an Active
+Disturbance Rejection Controller (ADRC).
+
+The observer tracks two states:
+
+- ``Z1`` estimate of the process output.
+- ``Z2`` estimate of the total disturbance, including unmodelled dynamics,
+  nonlinearities, and external disturbances.
+
+The observer gain is derived from :attr:`Wo` and :attr:`b0`. A higher :attr:`Wo`
+tracks disturbances faster but amplifies sensor noise.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fWo` and :attr:`fB0` at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_ExtendedStateObserver EXTENDS FB_SoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fWo      : LREAL; // Observer bandwidth in rad/s.
+	_fB0      : LREAL; // Estimated plant gain.
+	_fInputU  : LREAL; // Control signal from the previous cycle.
+	_fInputY  : LREAL; // Measured process output (feedback).
+	_fZ1      : LREAL; // Estimated process output.
+	_fZ2      : LREAL; // Estimated total disturbance.
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="B0" Id="{0121c0bd-90dd-092e-207d-a0cf5cfe92db}">
+      <Declaration><![CDATA[(*
+Gets or sets the estimated plant gain (b0).
+
+This is the ratio of how much the output changes per unit of control signal.
+For example, if a 10% heater output raises the temperature at 2°C/s, then
+``b0 = 0.2``. This does not need to be exact because the observer treats inaccuracies
+as part of the disturbance and cancels them.
+*)
+PROPERTY B0 : LREAL]]></Declaration>
+      <Get Name="Get" Id="{c92ab4e9-0b5d-005e-37aa-51c3a269a75c}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[B0 := THIS^._fB0;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{df80c78d-d114-061e-1cc6-cda1dad3bbdf}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fB0 := B0;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{a3dac210-89db-0e2b-1da8-10cd54acf367}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fWo          : LREAL; // Observer bandwidth in rad/s.
+	fB0          : LREAL; // Estimated plant gain.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fWo := fWo;
+THIS^._fb0 := fb0;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="InputU" Id="{bcee7a45-1005-0fc7-0f68-64a57ee887ea}">
+      <Declaration><![CDATA[(*
+Gets or sets the control signal from the previous cycle.
+
+Set this to the controller output before calling :meth:`Run`.
+*)
+PROPERTY InputU : LREAL]]></Declaration>
+      <Get Name="Get" Id="{c1b7decd-9f85-0c44-16fb-8254f2a719d8}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[InputU := THIS^._fInputU;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{6d13eeb6-d2d9-0c62-3d26-0afc545bf32a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fInputU := InputU;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="InputY" Id="{fddf6fbe-6f7a-02c5-3b90-59065938213c}">
+      <Declaration><![CDATA[(*
+Gets or sets the measured process output.
+
+Set this to the feedback value before calling :meth:`Run`.
+*)
+PROPERTY InputY : LREAL]]></Declaration>
+      <Get Name="Get" Id="{e814b145-e154-09c9-2604-27a90f970120}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[InputY := THIS^._fInputY;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{d2ae5b70-1068-06ea-2a2e-691a2219b682}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fInputY := InputY;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{0118aa5e-05f2-0ec0-3b4c-aa0955c685e5}">
+      <Declaration><![CDATA[(* Clears the observer state. Z1 and Z2 are set to zero. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fZ1     := 0;
+THIS^._fZ2     := 0;
+THIS^._fOutput := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{b8b1a4bb-ccac-0577-0020-4ecc562b84fb}">
+      <Declaration><![CDATA[(*
+Advances the observer by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If the measured cycle
+   time is zero the method returns early without updating the state.
+
+   Uses Forward Euler discretisation. For stability, ensure :attr:`Wo` satisfies
+   ``Wo * T < 1`` where ``T`` is the task cycle time in seconds. For a 10ms task,
+   ``Wo`` should not exceed 100 rad/s.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fT          : LREAL;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fError : LREAL;
+	fBeta1 : LREAL;
+	fBeta2 : LREAL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(NOT fbTaskCycle.HasChanged);
+
+fBeta1 := 2.0 * THIS^._fWo;
+fBeta2 := THIS^._fWo * THIS^._fWo;
+
+fError := THIS^._fInputY - THIS^._fZ1;
+
+THIS^._fZ1 := THIS^._fZ1 + fT * (THIS^._fZ2 + fBeta1 * fError);
+THIS^._fZ2 := THIS^._fZ2 + fT * (fBeta2 * fError + THIS^._fb0 * THIS^._fInputU);
+
+THIS^._fOutput := THIS^._fZ1;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Wo" Id="{df1ffb5e-c457-0243-2709-21bc215bb907}">
+      <Declaration><![CDATA[(*
+Gets or sets the observer bandwidth in rad/s.
+
+Controls how quickly the observer tracks the process output and disturbances.
+Typically set to 3–10 times :attr:`~FB_ADRC.Wc`. A value of ``10`` means the
+observer reacts roughly 10 times faster than the controller.
+
+Too high amplifies sensor noise and risks numerical instability, for a 10ms
+task cycle, keep ``Wo`` below 100 rad/s. Too low and disturbances are not
+rejected fast enough.
+*)
+PROPERTY Wo : LREAL]]></Declaration>
+      <Get Name="Get" Id="{6878b262-4f5a-0ecc-0caf-07de83734f69}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Wo := THIS^._fWo;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{81c9b792-39ff-0622-15cb-4080f973f188}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fWo := Wo;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Z1" Id="{d284ba31-f4c1-02ec-2788-9481905e64db}">
+      <Declaration><![CDATA[(* Gets the estimated process output. *)
+PROPERTY Z1 : LREAL]]></Declaration>
+      <Get Name="Get" Id="{1fbf4275-3078-0bd8-067f-debfa90d88b7}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Z1 := THIS^._fZ1;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Z2" Id="{bada8e95-e4cc-08b4-3bb6-1a44f5d1c8b0}">
+      <Declaration><![CDATA[(*
+Gets the estimated total disturbance.
+
+A large value indicates significant unmodelled dynamics or external disturbance acting on the process.
+*)
+PROPERTY Z2 : LREAL]]></Declaration>
+      <Get Name="Get" Id="{c1c4b0a7-023b-0ea3-2584-e2cbff6bad4e}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Z2 := THIS^._fZ2;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+  </POU>
+</TcPlcObject>
