@@ -1,0 +1,222 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_RampProfile" Id="{2d29c318-0608-0753-1e68-5cecb183c25e}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Generates a ramp signal that rises or falls toward a target value within a
+configurable duration, then holds at the target.
+
+The rate of change is derived automatically from :attr:`Target`, :attr:`StartValue`,
+and :attr:`Duration`. Once the output is within one time step of the target it
+snaps to the target and :attr:`IsComplete` becomes ``TRUE``. If :attr:`Target`
+or :attr:`Duration` change mid-run the rate is recalculated immediately.
+
+A duration of ``LTIME#0`` snaps the output to :attr:`Target` immediately.
+If :attr:`Target` equals :attr:`StartValue`, :attr:`IsComplete` is ``TRUE``
+from the first call.
+
+Calling :meth:`Reset` returns the output to :attr:`StartValue` and clears
+:attr:`IsComplete`.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fStartValue`, :attr:`fTarget`, and :attr:`tDuration`
+   at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_RampProfile EXTENDS FB_SoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fStartValue : LREAL; // Initial output value. Restored on Reset.
+	_fTarget     : LREAL; // Target value to ramp toward.
+	_tDuration   : LTIME; // Time to reach the target from StartValue.
+	_bIsComplete : BOOL;  // TRUE when the output has reached the target.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Duration" Id="{a5325695-7069-0d2f-2220-59f932cee7fc}">
+      <Declaration><![CDATA[(*
+Gets or sets the duration. 
+
+This is the time taken to ramp from :attr:`StartValue` to :attr:`Target`.
+``LTIME#0`` snaps the output to the target immediately. 
+Changes take effect immediately.
+*)
+PROPERTY Duration : LTIME]]></Declaration>
+      <Get Name="Get" Id="{e51af5a9-da0d-0245-21fc-3a57e09f16a3}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Duration := THIS^._tDuration;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{a8440c5b-a6d3-09f6-392f-0ea196165137}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._tDuration := Duration;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{032f9022-a153-046a-2db7-e60cdc444bb2}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fStartValue  : LREAL; // Initial output value.
+	fTarget      : LREAL; // Target value to ramp toward.
+	tDuration    : LTIME; // Time to reach the target from StartValue. LTIME#0 snaps immediately.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fStartValue := fStartValue;
+THIS^._fTarget     := fTarget;
+THIS^._tDuration   := tDuration;
+THIS^._fOutput     := fStartValue;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="IsComplete" Id="{90c046d8-1137-0b6b-22e4-e1716257e47f}">
+      <Declaration><![CDATA[(*
+Gets whether the output has reached :attr:`Target`. 
+
+Becomes ``TRUE`` when the output is within one time step of the target,
+and ``FALSE`` again if :attr:`Target` changes and the output no longer matches.
+*)
+PROPERTY IsComplete : BOOL]]></Declaration>
+      <Get Name="Get" Id="{f05079e0-5fb7-0e9c-3306-abe7be5e12e4}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[IsComplete := THIS^._bIsComplete;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{9fb1d9df-9bde-0517-2745-a92dd44b527c}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._bIsComplete := IsComplete;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{0d7be70d-07b2-09af-3656-a348c9935e13}">
+      <Declaration><![CDATA[(* Returns the output to the start value set in ``FB_init`` and clears :attr:`IsComplete`. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput     := THIS^._fStartValue;
+THIS^._bIsComplete := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{12b7d9f7-dc36-01ab-1a25-3bc6be29e146}">
+      <Declaration><![CDATA[(*
+Advances the ramp profile by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task. If the measured cycle
+   time is zero the method returns early without updating the output.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fT          : LREAL;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fRate      : LREAL;
+	fStep      : LREAL;
+	fRemaining : LREAL;
+	fDuration  : LREAL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF bInit THEN
+	fT := TO_LREAL(FsCommon.F_GetCurrentTaskCycleTime()) / TO_LREAL(LTIME#1S);
+	RETURN(bInit := fT <= 0);
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(NOT fbTaskCycle.HasChanged);
+
+fRemaining := THIS^._fTarget - THIS^._fOutput;
+
+IF THIS^._tDuration = LTIME#0S OR THIS^._fTarget = THIS^._fStartValue THEN
+	THIS^._fOutput     := THIS^._fTarget;
+	THIS^._bIsComplete := TRUE;
+	RETURN;
+END_IF
+
+fDuration := TO_LREAL(THIS^._tDuration) / TO_LREAL(LTIME#1S);
+fRate     := ABS(THIS^._fTarget - THIS^._fStartValue) / fDuration;
+fStep     := fRate * fT;
+
+IF ABS(fRemaining) <= fStep THEN
+	THIS^._fOutput     := THIS^._fTarget;
+	THIS^._bIsComplete := TRUE;
+ELSE
+	THIS^._fOutput     := THIS^._fOutput + fStep * SEL(fRemaining > 0, -1.0, 1.0);
+	THIS^._bIsComplete := FALSE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="StartValue" Id="{c38bab0e-a7e4-06f0-1f99-aa31b83f3e12}">
+      <Declaration><![CDATA[(*
+Gets or sets the start value.
+
+This is the output value the ramp returns to after a :meth:`Reset`.
+*)
+PROPERTY StartValue : LREAL]]></Declaration>
+      <Get Name="Get" Id="{52305af2-64d6-04ef-2ec5-5e6ba6161ab5}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[StartValue := THIS^._fStartValue;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{f123caf8-9fe8-05f1-13c5-1fb1972fe8ce}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fStartValue := StartValue;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Target" Id="{525bbdc7-f3af-083e-346a-a4c7fd7d2815}">
+      <Declaration><![CDATA[(*
+Gets or sets the target value. 
+
+The output ramps toward this value within :attr:`Duration`. 
+Changes take effect immediately, recalculating the rate.
+*)
+PROPERTY Target : LREAL]]></Declaration>
+      <Get Name="Get" Id="{898edf6c-da52-04c2-0075-7f8581ae1521}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Target := THIS^._fTarget;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{7d2bb9f6-8911-0bce-1310-099b9c3590be}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fTarget := Target;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

@@ -136,6 +136,9 @@
     <Compile Include="Signals\FB_Ramp.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Signals\FB_RampProfile.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Signals\FB_SawtoothWave.TcPOU">
       <SubType>Code</SubType>
     </Compile>
