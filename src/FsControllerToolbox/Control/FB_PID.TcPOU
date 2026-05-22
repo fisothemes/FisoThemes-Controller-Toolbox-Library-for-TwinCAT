@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
   <POU Name="FB_PID" Id="{89979a6b-f7ab-0c11-132d-ce67a3478ccc}" SpecialFunc="None">
     <Declaration><![CDATA[(*
 Ideal-form PID controller with clamped output, comparator-based anti-windup,
@@ -34,6 +34,7 @@ VAR
 	_fSetpoint  : LREAL; // Setpoint (SP).
 	_fFeedback  : LREAL; // Process variable (PV).
 	_fError     : LREAL; // Current error (SP - PV).
+	_bEnable	: BOOL := TRUE;
 	_eMode      : E_PIDMode; // Operating mode. Auto or Manual.
 	_fbClamp    : FB_Clamp(
 					fMaximum := FsCommon.GVL_TypeValueLimits.LREAL_MAX, 
@@ -79,6 +80,31 @@ END_VAR
 ]]></Declaration>
         <Implementation>
           <ST><![CDATA[THIS^._fbI.Mode := AntiWindupMode;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Enable" Id="{56deecf4-f086-0adb-0226-89c67066e4ab}">
+      <Declaration><![CDATA[(*
+Gets or sets whether the controller is active.
+
+When ``FALSE`` all internal components are reset and the output is held at zero.
+The controller resumes from a clean state when re-enabled. Defaults to ``TRUE``.
+*)
+PROPERTY Enable : BOOL]]></Declaration>
+      <Get Name="Get" Id="{df82b786-f1f0-0323-3ff1-7daef3858ef7}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Enable := THIS^._bEnable;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{a66081ae-8351-0350-32b4-17b9e940e209}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._bEnable := Enable;]]></ST>
         </Implementation>
       </Set>
     </Property>
@@ -309,35 +335,46 @@ RETURN(NOT fbTaskCycle.HasChanged);
 
 THIS^._fError := THIS^._fSetpoint - THIS^._fFeedback;
 
-THIS^._fbP.Input := THIS^._fError;  THIS^._fbP.Run();
-THIS^._fbD.Input := -THIS^._fFeedback; THIS^._fbD.Run();
-
-CASE THIS^._eMode OF
-	E_PIDMode.Auto:
-		THIS^._fbI.Input           := THIS^._fbP.Output;
-		THIS^._fbI.ComparatorInput := THIS^._fbClamp.Residual;
-		THIS^._fbI.Run();
-
-		THIS^._fbClamp.Input := THIS^._fbP.Output + THIS^._fbI.Output + THIS^._fbD.Output;
+IF THIS^._bEnable THEN 
+	THIS^._fbP.Input := THIS^._fError;  THIS^._fbP.Run();
+	THIS^._fbD.Input := -THIS^._fFeedback; THIS^._fbD.Run();
+	
+	CASE THIS^._eMode OF
+		E_PIDMode.Auto:
+			THIS^._fbI.Input           := THIS^._fbP.Output;
+			THIS^._fbI.ComparatorInput := THIS^._fbClamp.Residual;
+			THIS^._fbI.Run();
+	
+			THIS^._fbClamp.Input := THIS^._fbP.Output + THIS^._fbI.Output + THIS^._fbD.Output;
+			THIS^._fbClamp.Run();
+			THIS^._fOutput := THIS^._fbClamp.Output;
+	
+		E_PIDMode.Manual:
+			THIS^._fbI.Sync(THIS^._fSetpoint - THIS^._fbP.Output - THIS^._fbD.Output);
+			THIS^._fbI.Input           := THIS^._fbP.Output;
+			THIS^._fbI.ComparatorInput := 0;
+			THIS^._fbI.Run();
+	
+			THIS^._fbClamp.Input := THIS^._fSetpoint;
+			THIS^._fbClamp.Run();
+			THIS^._fOutput := THIS^._fbClamp.Output;
+	ELSE
+		THIS^._fbP.Reset();
+		THIS^._fbI.Reset();
+		THIS^._fbD.Reset();
+		
+		THIS^._fbClamp.Input := 0;
 		THIS^._fbClamp.Run();
-		THIS^._fOutput := THIS^._fbClamp.Output;
-
-	E_PIDMode.Manual:
-		THIS^._fbI.Sync(THIS^._fSetpoint - THIS^._fbP.Output - THIS^._fbD.Output);
-		THIS^._fbI.Input           := THIS^._fbP.Output;
-		THIS^._fbI.ComparatorInput := 0;
-		THIS^._fbI.Run();
-
-		THIS^._fbClamp.Input := THIS^._fSetpoint;
-		THIS^._fbClamp.Run();
-		THIS^._fOutput := THIS^._fbClamp.Output;
+		
+		THIS^._fOutput := 0.0;
+	END_CASE
 ELSE
 	THIS^._fbP.Reset();
 	THIS^._fbI.Reset();
 	THIS^._fbD.Reset();
 	
 	THIS^._fOutput := 0.0;
-END_CASE]]></ST>
+END_IF]]></ST>
       </Implementation>
     </Method>
     <Property Name="Setpoint" Id="{7281e739-82e0-000c-0881-6793dd59eae8}">
