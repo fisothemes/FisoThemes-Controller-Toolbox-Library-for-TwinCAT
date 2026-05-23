@@ -1,0 +1,235 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_LinearStateErrorFeedback" Id="{2d66d277-9fba-0dce-3ad7-f4129d8a62ab}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Computes the control output for a Linear Active Disturbance Rejection Controller (LADRC).
+
+The control law is:
+
+.. math::
+
+   u_0 = \omega_c \cdot (SP - z_1) + u_i
+
+   u = \frac{u_0 - z_2}{b_0}
+
+where :math:`u_0` is the error feedback, :math:`u_i` is the integral correction
+from an external integrator, :math:`z_2` cancels the estimated disturbance from
+:class:`FB_ExtendedStateObserver`, and dividing by :attr:`B0` scales the output
+to the plant's input range.
+
+If :attr:`B0` is zero the output is held at zero.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fWc` and :attr:`fB0` at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_LinearStateErrorFeedback EXTENDS FB_SoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fWc       : LREAL; // Controller bandwidth in rad/s.
+	_fB0       : LREAL; // Estimated plant gain.
+	_fSetpoint : LREAL; // Desired process output (SP).
+	_fZ1       : LREAL; // Estimated process output from the observer.
+	_fZ2       : LREAL; // Estimated total disturbance from the observer.
+	_fIntegral : LREAL; // Integral correction from the external integrator.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="B0" Id="{dbc28974-3db4-0501-37cb-5576fa10a65a}">
+      <Declaration><![CDATA[(*
+Gets or sets the estimated plant gain (b0).
+
+Must be non-zero. A value of zero disables the control output entirely.
+See :attr:`~FB_ADRC.B0` for guidance on how to estimate this value.
+*)
+PROPERTY B0 : LREAL]]></Declaration>
+      <Get Name="Get" Id="{eef2fe38-ed2f-00bc-2618-00cba69666d6}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[B0 := THIS^._fB0;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{3cdc427b-2197-0b97-3441-57fdbb6e889a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fB0 := B0;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{33a61146-ad3c-04b7-26cf-15b939133048}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fWc          : LREAL; // Controller bandwidth in rad/s.
+	fB0          : LREAL; // Estimated plant gain.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fWc := fWc;
+THIS^._fB0 := fB0;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Integral" Id="{79595be9-f8d7-0b05-1ff9-9c20dbcf6dba}">
+      <Declaration><![CDATA[(*
+Gets or sets the integral correction.
+
+Set this to the integrator output before calling :meth:`Run`. 
+*)
+PROPERTY Integral : LREAL]]></Declaration>
+      <Get Name="Get" Id="{75c942a0-7d0d-0c88-18b2-838e73ea3adc}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Integral := THIS^._fIntegral;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{d9c71c1b-58a2-02f0-00de-6966739bea85}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fIntegral := Integral;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{375fb26b-8f02-0f29-2726-3c42eb298fdd}">
+      <Declaration><![CDATA[(* Sets the output to zero. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{b3bd60a8-6419-0864-3b76-2b98341d5ee3}">
+      <Declaration><![CDATA[(*
+Computes the control output for the current cycle.
+
+.. note::
+   Must be called once per cycle on a single PLC task.
+   If :attr:`b0` is zero the output is held at zero.
+*)
+METHOD Run
+VAR
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[RETURN(THIS^._fb0 = 0);
+
+THIS^._fOutput :=
+    ((THIS^._fWc * (THIS^._fSetpoint - THIS^._fZ1)) + THIS^._fIntegral - THIS^._fZ2)
+    / THIS^._fB0;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Setpoint" Id="{bb289447-61bf-0660-0115-452559086c48}">
+      <Declaration><![CDATA[(* Gets or sets the setpoint. This is the desired process output. *)
+PROPERTY Setpoint : LREAL]]></Declaration>
+      <Get Name="Get" Id="{121035dc-dee1-058d-397a-c73fe3ed7ab5}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Setpoint := THIS^._fSetpoint;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{e6a4c35e-ae7c-01f0-02e7-6909909c27dd}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fSetpoint := Setpoint;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Wc" Id="{2a92c442-2b1b-0833-0c4b-550ddb8a3fea}">
+      <Declaration><![CDATA[(*
+Gets or sets the controller bandwidth in rad/s.
+
+Controls how fast the closed loop responds to setpoint changes. A higher value
+gives a faster response but risks overshoot and sensitivity to noise. Start with
+a low value and increase until the response is satisfactory.
+
+For a process that should settle in roughly 10 seconds, a starting value of
+``Wc = 0.5`` rad/s is reasonable.
+*)
+PROPERTY Wc : LREAL]]></Declaration>
+      <Get Name="Get" Id="{7a9e356d-e1d1-0624-0c26-606c3c738d56}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Wc := THIS^._fWc;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{ca4c6ba7-aa9f-0088-0ad5-67c9200ee103}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fWc := Wc;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Z1" Id="{9749e167-3b10-05e5-2661-4a056a9dd962}">
+      <Declaration><![CDATA[(* 
+Gets or sets the estimated process output from :class:`FB_ExtendedStateObserver`. 
+
+Set this to ``Z1`` before calling :meth:`Run`.
+*)
+PROPERTY Z1 : LREAL]]></Declaration>
+      <Get Name="Get" Id="{db1589b3-7ed2-0bf0-3ea3-708c9cc8d465}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Z1 := THIS^._fZ1;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{d80b7f83-fb62-042c-1a90-e45fd51e5920}">
+        <Declaration><![CDATA[
+VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fZ1 := Z1;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Z2" Id="{040e923d-1931-0684-2c33-271910592afc}">
+      <Declaration><![CDATA[(*
+Gets or sets the estimated total disturbance from :class:`FB_ExtendedStateObserver`. 
+
+Set this to ``Z2`` before calling :meth:`Run`.
+*)
+PROPERTY Z2 : LREAL]]></Declaration>
+      <Get Name="Get" Id="{1ca67bbf-0d58-01c8-1d39-c7f54e198b3e}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Z2 := THIS^._fZ2;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{6be6898f-51b6-0415-00f1-e381a8060962}">
+        <Declaration><![CDATA[
+VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fZ2 := Z2;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>
