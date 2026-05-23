@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_Bias" Id="{49e29d60-f729-0376-0c75-4ceaf1c6c44d}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Adds a fixed offset to the input signal.
+
+A positive value shifts the output up; a negative value shifts it down.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_Bias EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable
+VAR
+	_fBias : LREAL; // Fixed offset added to the input.
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Bias" Id="{8ba14310-58ed-0393-2100-54f7aa4ae283}">
+      <Declaration><![CDATA[(* Gets or sets the fixed offset added to the input. Negative values subtract. *)
+PROPERTY Bias : LREAL]]></Declaration>
+      <Get Name="Get" Id="{7cae08ca-54d3-0f6f-04ba-658962e49d8f}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Bias := THIS^._fBias;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{21546a0d-21b8-0c03-2d7d-a29be2bd0584}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fBias := Bias;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{d6080596-1986-001a-3232-78b3ef086d35}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fBias        : LREAL; // Fixed offset added to the input.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fBias := fBias;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{91912f97-af7b-0653-2a68-d5157071b51d}">
+      <Declaration><![CDATA[(* Adds :attr:`Bias` to the current input. *)
+METHOD Run
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := THIS^._fInput + THIS^._fBias]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
