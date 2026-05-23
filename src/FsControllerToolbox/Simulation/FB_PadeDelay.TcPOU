@@ -81,7 +81,7 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[]]></ST>
+        <ST><![CDATA[THIS^._tDelayTime := tDelayTime;]]></ST>
       </Implementation>
     </Method>
     <Method Name="Reset" Id="{898365af-834f-0d2f-0292-5e1f7d5333a8}">
