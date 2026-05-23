@@ -136,6 +136,9 @@
     <Compile Include="Signals\DUTs\E_RampDirection.TcTLEO">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Signals\FB_GaussianNoise.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Signals\FB_PeriodicSignal.TcPOU">
       <SubType>Code</SubType>
     </Compile>

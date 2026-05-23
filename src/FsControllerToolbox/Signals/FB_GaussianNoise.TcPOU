@@ -1,0 +1,120 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_GaussianNoise" Id="{36adb2bc-ee8b-0aa8-0775-f0b00cc9d748}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Generates normally distributed (Gaussian) noise using the Box-Muller transform.
+
+The output follows a normal distribution with the configured :attr:`Mean` and
+:attr:`StdDev`. Values beyond ±3σ occur roughly 0.3% of the time. This models
+real sensor noise more accurately than uniform white noise.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`fMean` and :attr:`fStdDev` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_GaussianNoise EXTENDS FB_SoComponent
+IMPLEMENTS FsCommon.I_Runnable
+VAR
+	_fMean   : LREAL; // Mean (centre) of the distribution.
+	_fStdDev : LREAL; // Standard deviation. Controls the spread of the noise.
+	_fbRng   : FsCommon.FB_RandomNumberGenerator(0); // Internal random number generator.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{af79349c-aa6e-0f50-2ed5-e77b17cbaf3e}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fMean        : LREAL; // Mean of the distribution.
+	fStdDev      : LREAL; // Standard deviation. A larger value produces more spread-out noise.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fMean   := fMean;
+THIS^._fStdDev := fStdDev;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Mean" Id="{dbcf6f7d-6db3-011c-1da4-61cce9d4f810}">
+      <Declaration><![CDATA[(*
+Gets or sets the mean.
+
+This is the centre of the distribution, the average value the noise oscillates
+around. For pure noise centred on zero, set this to 0.
+*)
+PROPERTY Mean : LREAL]]></Declaration>
+      <Get Name="Get" Id="{0d14cf89-c67c-0661-0cc0-f0bd315b8297}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Mean := THIS^._fMean;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{5f00221f-5799-057f-2531-1dce697f2c93}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fMean := Mean;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Run" Id="{2262b1b6-5ae6-0676-2a30-a3d785010f9f}">
+      <Declaration><![CDATA[(*
+Generates the next Gaussian noise sample using the Box-Muller transform.
+
+Two uniform random samples are drawn per cycle to produce one Gaussian sample.
+If either sample is zero it is replaced with a small epsilon to avoid a
+logarithm of zero.
+*)
+METHOD Run
+VAR
+	fU1       : LREAL;
+	fU2       : LREAL;
+	fEpsilon  : LREAL := 1.0E-10;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fU1 := ABS(THIS^._fbRng.NextReal());
+fU2 := ABS(THIS^._fbRng.NextReal());
+
+// Guard against log(0)
+IF fU1 < fEpsilon THEN fU1 := fEpsilon; END_IF
+IF fU2 < fEpsilon THEN fU2 := fEpsilon; END_IF
+
+THIS^._fOutput := THIS^._fMean +
+	THIS^._fStdDev * SQRT(-2.0 * LN(fU1)) * COS(2.0 * Tc2_System.PI * fU2);]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="StdDev" Id="{6a08a628-3769-016e-3ae0-e1ef222bb28b}">
+      <Declaration><![CDATA[(*
+Gets or sets the standard deviation (σ).
+
+Controls the spread of the noise. Roughly 68% of samples fall within ±1σ of
+the mean, 95% within ±2σ, and 99.7% within ±3σ. A larger value produces
+more spread-out noise.
+*)
+PROPERTY StdDev : LREAL]]></Declaration>
+      <Get Name="Get" Id="{da504d81-48b9-0248-054d-50a64395254a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[StdDev := THIS^._fStdDev;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{ddb9ebd1-f65a-070e-2c30-500735a88b66}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fStdDev := StdDev;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>
