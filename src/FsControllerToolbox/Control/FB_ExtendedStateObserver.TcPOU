@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
   <POU Name="FB_ExtendedStateObserver" Id="{d782ba67-7b4e-0aec-220f-02cc7ef8d2ab}" SpecialFunc="None">
     <Declaration><![CDATA[(*
 Estimates the process output and total disturbance for use in an Active
@@ -73,7 +73,7 @@ END_VAR
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[THIS^._fWo := fWo;
-THIS^._fb0 := fb0;]]></ST>
+THIS^._fB0 := fB0;]]></ST>
       </Implementation>
     </Method>
     <Property Name="InputU" Id="{bcee7a45-1005-0fc7-0f68-64a57ee887ea}">
