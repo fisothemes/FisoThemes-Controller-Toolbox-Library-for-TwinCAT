@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
   <POU Name="FB_PID" Id="{89979a6b-f7ab-0c11-132d-ce67a3478ccc}" SpecialFunc="None">
     <Declaration><![CDATA[(*
 Ideal-form PID controller with clamped output, comparator-based anti-windup,
@@ -35,7 +35,7 @@ VAR
 	_fFeedback  : LREAL; // Process variable (PV).
 	_fError     : LREAL; // Current error (SP - PV).
 	_bEnable	: BOOL := TRUE;
-	_eMode      : E_PIDMode; // Operating mode. Auto or Manual.
+	_eMode      : E_ControllerMode := E_ControllerMode.Auto; // Operating mode. Auto or Manual.
 	_fbClamp    : FB_Clamp(
 					fMaximum := FsCommon.GVL_TypeValueLimits.LREAL_MAX, 
 					fMinimum := FsCommon.GVL_TypeValueLimits.LREAL_MIN); // Bounds of the controller's Output.
@@ -274,11 +274,11 @@ END_VAR
 Gets or sets the operating mode.
 
 In :attr:`~E_PIDMode.Auto` mode the output is computed from :attr:`Setpoint` and
-:attr:`Feedback`. In :attr:`~E_PIDMode.Manual` mode the output tracks
+:attr:`Feedback`. In :attr:`~E_ControllerMode.Manual` mode the output tracks
 :attr:`Setpoint` directly through the output clamp. The integrator is continuously
 primed in manual mode so switching to auto produces no jump in output.
 *)
-PROPERTY Mode : E_PIDMode]]></Declaration>
+PROPERTY Mode : E_ControllerMode]]></Declaration>
       <Get Name="Get" Id="{ce771e3a-cbfe-09dd-2c1a-12e944dca44b}">
         <Declaration><![CDATA[VAR
 END_VAR
@@ -340,7 +340,7 @@ IF THIS^._bEnable THEN
 	THIS^._fbD.Input := -THIS^._fFeedback; THIS^._fbD.Run();
 	
 	CASE THIS^._eMode OF
-		E_PIDMode.Auto:
+		E_ControllerMode.Auto:
 			THIS^._fbI.Input           := THIS^._fbP.Output;
 			THIS^._fbI.ComparatorInput := THIS^._fbClamp.Residual;
 			THIS^._fbI.Run();
@@ -349,7 +349,7 @@ IF THIS^._bEnable THEN
 			THIS^._fbClamp.Run();
 			THIS^._fOutput := THIS^._fbClamp.Output;
 	
-		E_PIDMode.Manual:
+		E_ControllerMode.Manual:
 			THIS^._fbI.Sync(THIS^._fSetpoint - THIS^._fbP.Output - THIS^._fbD.Output);
 			THIS^._fbI.Input           := THIS^._fbP.Output;
 			THIS^._fbI.ComparatorInput := 0;
@@ -381,7 +381,7 @@ END_IF]]></ST>
       <Declaration><![CDATA[(* 
 Gets or sets the setpoint. 
 
-In :attr:`~E_PIDMode.Manual` mode this is used as 
+In :attr:`~E_ControllerMode.Manual` mode this is used as 
 the manual output value, routed directly through the output clamp.
 *)
 PROPERTY Setpoint : LREAL]]></Declaration>

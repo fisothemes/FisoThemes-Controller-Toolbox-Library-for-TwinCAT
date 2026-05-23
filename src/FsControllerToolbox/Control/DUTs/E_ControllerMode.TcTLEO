@@ -1,15 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
-  <EnumerationTextList Name="E_PIDMode" Id="{ad840b95-c69a-0b49-1cff-63e9d69bb985}">
-    <Declaration><![CDATA[(* Specifies the operating mode of a PID controller. *)
+  <EnumerationTextList Name="E_ControllerMode" Id="{ad840b95-c69a-0b49-1cff-63e9d69bb985}">
+    <Declaration><![CDATA[(* Specifies the operating mode of a controller. *)
 {attribute 'qualified_only'}
 {attribute 'strict'}
 {attribute 'to_string'}
-TYPE E_PIDMode :
+TYPE E_ControllerMode :
 (
-	// Output tracks Setpoint directly through the output clamp.
+	// Output is computed from Setpoint and Feedback using the controller's algorithm.
 	Auto 	:= 0,
-	// Output is computed from Setpoint and Feedback using the PID algorithm.
+	// Output tracks Setpoint directly.
 	Manual	:= 1
 )BYTE;
 END_TYPE

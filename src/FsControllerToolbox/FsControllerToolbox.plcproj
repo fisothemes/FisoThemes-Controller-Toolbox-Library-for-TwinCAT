@@ -55,7 +55,7 @@
     <Compile Include="Control\DUTs\E_AntiWindupMode.TcTLEO">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Control\DUTs\E_PIDMode.TcTLEO">
+    <Compile Include="Control\DUTs\E_ControllerMode.TcTLEO">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Control\FB_ClampingIntegrator.TcPOU">
