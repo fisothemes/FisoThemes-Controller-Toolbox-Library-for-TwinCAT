@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_Gain" Id="{10703924-426a-0a82-1c22-c5fcf8c954ff}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Scales the input signal by a fixed gain.
+
+A value greater than 1 amplifies the signal. A value between 0 and 1 attenuates
+it. A negative value inverts and scales. A value of 0 holds the output at zero.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_Gain EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable
+VAR
+	_fGain : LREAL; // Factor the input is scaled by.
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{ec23e17f-ead4-039e-03ae-70261c1d709b}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fGain        : LREAL; // Factor the input is scaled by.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fGain := fGain;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Gain" Id="{5cea68ba-68d6-0859-248d-007acda9755f}">
+      <Declaration><![CDATA[(*
+Gets or sets the scaling factor.
+
+A value greater than 1 amplifies the signal. A value between 0 and 1
+attenuates it. A value of -1 inverts the signal. A value of 0 holds
+the output at zero.
+*)
+PROPERTY Gain : LREAL]]></Declaration>
+      <Get Name="Get" Id="{55a484db-d579-0ffe-0488-2498cf5716e5}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Gain := THIS^._fGain;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{6349e87f-9885-0ade-024e-1dbe320db4de}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fGain := Gain;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Run" Id="{09678ae7-a615-043e-0ddd-0d0d2e8abe92}">
+      <Declaration><![CDATA[(* Scales the current input by :attr:`Gain`. *)
+METHOD Run
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := THIS^._fInput * THIS^._fGain;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

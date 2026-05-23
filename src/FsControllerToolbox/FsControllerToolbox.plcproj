@@ -175,6 +175,9 @@
     <Compile Include="Transform\FB_Bias.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Transform\FB_Gain.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Transform\FB_LinearScaler.TcPOU">
       <SubType>Code</SubType>
     </Compile>
