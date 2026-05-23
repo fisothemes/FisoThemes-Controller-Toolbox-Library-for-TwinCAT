@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_WhiteNoise" Id="{174d05a6-f244-087d-2ccc-556be2d7466a}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Generates uniformly distributed white noise.
+
+The output is a random value in the range [-:attr:`Amplitude`, +:attr:`Amplitude`]
+on every cycle. Useful for testing controller robustness against measurement noise
+and disturbances.
+
+.. note::
+   The block is ``FINAL`` and must be instantiated, not extended.
+   Use ``FB_init`` to set :attr:`Amplitude` at declaration time.
+*)
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_WhiteNoise EXTENDS FB_SoComponent
+IMPLEMENTS FsCommon.I_Runnable
+VAR
+	_fAmplitude : LREAL; // Maximum absolute output value.
+	_fbRng      : FsCommon.FB_RandomNumberGenerator(0); // Internal random number generator.
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Amplitude" Id="{3b120afb-54f2-0b8c-3699-23ef96e57677}">
+      <Declaration><![CDATA[(*
+Gets or sets the amplitude.
+
+The output is uniformly distributed in [-:attr:`Amplitude`, +:attr:`Amplitude`].
+A value of 0 holds the output at zero.
+*)
+PROPERTY Amplitude : LREAL]]></Declaration>
+      <Get Name="Get" Id="{6b35f454-e3a0-04f1-384f-67fc312c835b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{d36c37b4-6a98-06cf-2533-086a8563d362}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{c02211b8-7557-063c-1ade-7aa48f3e5831}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL;  // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fAmplitude   : LREAL; // Maximum absolute output value.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fAmplitude := fAmplitude;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{d26fe23f-0fc4-035c-211f-3101fe5fd07d}">
+      <Declaration><![CDATA[(* Generates the next white noise sample. *)
+METHOD Run
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fOutput := THIS^._fbRng.NextRangedReal(-THIS^._fAmplitude, THIS^._fAmplitude);]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

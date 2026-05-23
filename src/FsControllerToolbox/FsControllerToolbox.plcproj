@@ -160,6 +160,9 @@
     <Compile Include="Signals\FB_TriangleWave.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Signals\FB_WhiteNoise.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Signals\ITFs\I_PeriodicSignal.TcIO">
       <SubType>Code</SubType>
     </Compile>
