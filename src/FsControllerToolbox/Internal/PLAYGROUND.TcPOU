@@ -3,52 +3,42 @@
   <POU Name="PLAYGROUND" Id="{d78796e8-f8c4-458f-9526-8acd467209b8}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM INTERNAL PLAYGROUND
 VAR
-	fSetpoint : LREAL;
-	fOutput   : LREAL;
-	fError    : LREAL;
-	fbPlant   : FB_FirstOrderPlant(fGain := 2.0, tTau := LTIME#5S);
-	fbPID	  : FB_PID(
-					fKp := 2.0,
-					tTn := LTIME#5S,
-					tTv := LTIME#1S,
-					tTd := LTIME#200MS,
-					fMaximum := 100, 
-					fMinimum := 0);
-	fbP       : FB_ProportionalGain(fKp := 2.0);
-	fbI       : FB_ClampingIntegrator(
-					tTn   := LTIME#5S,
-					eMode := E_AntiWindupMode.Off);
-				    //tTt   := LTIME#2S200MS);
-	fbD       : FB_Differentiator(tTv := LTIME#1S, tTd := LTIME#200MS);
-	fbClamp   : FB_Clamp(fMaximum := 100.0, fMinimum := 0.0);
+	fSetpoint 			: LREAL;
+	fOutputA, fOutputB  : LREAL;
+	fbPlantA, fbPlantB  : FB_FirstOrderPlant(fGain := 2.0, tTau := LTIME#5S);
+	fbPID	  			: FB_PID(
+							fKp := 2.0,
+							tTn := LTIME#5S,
+							tTv := LTIME#1S,
+							tTd := LTIME#200MS,
+							fMaximum := 100, 
+							fMinimum := 0);
+	fbADRC 				: FB_LADRC(
+							fWc      := 5.0,
+							fWo      := 25.0,
+							fb0      := 0.1,
+							fMaximum := 100,
+							fMinimum := 0);
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[fOutput := fbPlant.Output;
+      <ST><![CDATA[fOutputA := fbPlantA.Output;
+fOutputB := fbPlantB.Output;
 
-fbPID.Setpoint := fSetpoint;
-fbPID.Feedback := fOutput;
-fError    	   := fbPID.Error;
+fbPID.Setpoint  := fSetpoint;
+fbADRC.Setpoint := fSetpoint;
+
+fbPID.Feedback  := fOutputA;
+fbADRC.Feedback := fOutputB;
 
 fbPID.Run();
+fbADRC.Run();
 
-fbPlant.Input := fbPID.Output;
-fbPlant.Run();
+fbPlantA.Input := fbPID.Output;
+fbPlantB.Input := fbADRC.Output;
 
-RETURN;
-fError := fSetpoint - fOutput;
-
-fbP.Input         := fError; fbP.Run();
-fbD.Input         := -fOutput;(* fbP.Output; *) fbD.Run();
-fbI.Input         := fbP.Output;
-fbI.ComparatorInput := fbClamp.Residual;
-fbI.Run();
-
-fbClamp.Input := fbP.Output + fbI.Output + fbD.Output;
-fbClamp.Run();
-
-fbPlant.Input := fbClamp.Output;
-fbPlant.Run();
+fbPlantA.Run();
+fbPlantB.Run();
 
 ]]></ST>
     </Implementation>

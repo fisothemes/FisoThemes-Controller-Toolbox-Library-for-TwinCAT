@@ -1,0 +1,498 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_LADRC" Id="{8e158e95-d7ad-06b7-1912-6e0fad7f4bfa}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+Linear Active Disturbance Rejection Controller (LADRC) with integral action.
+
+An alternative to PID control that actively estimates and cancels disturbances,
+unmodelled dynamics, and plant nonlinearities in real time using an Extended
+State Observer (ESO). The integral term eliminates steady-state offset.
+
+Tuning procedure:
+
+1. Estimate :attr:`B0` from a step test — apply a known control output and
+   measure the initial rate of change of the process variable.
+2. Set :attr:`Wc` to roughly the desired closed-loop bandwidth. For a process
+   that should settle in 10 seconds, start with ``Wc = 0.5`` rad/s.
+3. Set :attr:`Wo` to 3–5 times :attr:`Wc` and increase if disturbance rejection
+   is too slow.
+4. If :attr:`AutoKi` is ``TRUE`` (default), the integral gain is derived
+   automatically as :math:`K_i = \omega_c^2`. Set :attr:`AutoKi` to ``FALSE``
+   to tune :attr:`Ki` manually if the automatic value causes overshoot.
+
+In :attr:`~E_ControllerMode.Manual` mode the output tracks :attr:`Setpoint`
+directly through the output clamp. The observer and integrator continue running
+in manual mode so switching to :attr:`~E_ControllerMode.Auto` produces no jump
+in output.
+
+.. note::
+   Set :attr:`Maximum` before :attr:`Minimum` to ensure the clamp guard applies
+   correctly. The same applies to :attr:`IntegratorBounds`.
+
+   Uses Forward Euler discretisation. For stability ensure ``Wo * T < 1`` where
+   ``T`` is the task cycle time in seconds.
+
+   Use ``FB_init`` to set :attr:`fWc`, :attr:`fWo`, :attr:`fB0`, :attr:`fMinimum`,
+   and :attr:`fMaximum` at declaration time.
+*)
+{attribute 'no_assign'}
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK FINAL FB_LADRC EXTENDS FB_SoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable, I_Bounded
+VAR
+	_fSetpoint  : LREAL;               // Setpoint (SP).
+	_fFeedback  : LREAL;               // Process variable (PV).
+	_bEnable    : BOOL := TRUE;        // When FALSE all components are reset and output is held at zero.
+	_bAutoKi    : BOOL := TRUE;        // When TRUE Ki is derived automatically as Wc².
+	_fKi        : LREAL;               // Integral gain. Used when AutoKi is FALSE.
+	_eMode      : E_ControllerMode := E_ControllerMode.Auto;
+	_fB0        : LREAL;               // Backing variable for the ESO and LSEF's b0.
+	_fbESO      : FB_ExtendedStateObserver(fWo := 0, fB0 := 0);
+	_fbI        : FB_ClampingIntegrator(tTn := LTIME#0S, eMode := E_AntiWindupMode.Hold);
+	_fbLSEF     : FB_LinearStateErrorFeedback(fWc := 0, fB0 := 0);
+	_fbClamp    : FB_Clamp(
+					fMaximum := FsCommon.GVL_TypeValueLimits.LREAL_MAX,
+					fMinimum := FsCommon.GVL_TypeValueLimits.LREAL_MIN);
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="AutoKi" Id="{f0718c8e-ce34-09a8-0442-97b42bf7afee}">
+      <Declaration><![CDATA[(*
+Gets or sets whether the integral gain is derived automatically.
+
+When ``TRUE`` (default), :attr:`Ki` is computed as :math:`\omega_c^2`. This
+is a good starting point for most processes. Set to ``FALSE`` to tune
+:attr:`Ki` manually if the automatic value causes overshoot or instability.
+*)
+PROPERTY AutoKi : BOOL]]></Declaration>
+      <Get Name="Get" Id="{6bed178d-8ace-077a-2b08-cc20ac987fc3}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AutoKi := THIS^._bAutoKi;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{fc99b1d1-d924-07af-374f-9c276620bf33}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._bAutoKi := AutoKi;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="B0" Id="{56753e97-3162-0d1a-150c-57bf9a2fdc6e}">
+      <Declaration><![CDATA[(*
+Gets or sets the estimated plant gain (b0).
+
+This is the ratio of how much the output changes per unit of control signal.
+For example, if a 10% heater output raises the temperature at 2°C/s, then
+``b0 = 0.2``. This does not need to be exact because the observer treats inaccuracies
+as disturbance and cancels them. Must be non-zero.
+
+Sets both the observer and control law gain simultaneously.
+*)
+PROPERTY B0 : LREAL]]></Declaration>
+      <Get Name="Get" Id="{33a1dcb5-cc6b-0388-0322-c902d59c07cd}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[B0 := THIS^._fB0;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{0748d49b-ed5a-0133-3ed8-5b81c9fe6f8e}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fB0 := B0;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Enable" Id="{07d8b234-c1e1-0431-203f-4f55c2251a5f}">
+      <Declaration><![CDATA[(*
+Gets or sets whether the controller is active.
+
+When ``FALSE`` all internal components are reset and the output is held at zero.
+Defaults to ``TRUE``.
+*)
+PROPERTY Enable : BOOL]]></Declaration>
+      <Get Name="Get" Id="{1062f282-01ff-0a55-23e6-dc7ae86ae10b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Enable := THIS^._bEnable;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{9581c9e2-5472-0bf5-21fb-f8c12ffc82a0}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._bEnable := Enable;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="FB_init" Id="{0b02e78d-acdc-01b7-00fe-cdc93472747e}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fWc          : LREAL; // Controller bandwidth in rad/s.
+	fWo          : LREAL; // Observer bandwidth in rad/s. Typically 3–5 times Wc.
+	fB0          : LREAL; // Estimated plant gain.
+	fMaximum     : LREAL; // Upper output clamp.
+	fMinimum     : LREAL; // Lower output clamp.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fB0        := fB0;
+THIS^._fbESO.Wo   := fWo;
+THIS^._fbESO.B0   := fB0;
+THIS^._fbLSEF.Wc  := fWc;
+THIS^._fbLSEF.B0  := fB0;
+THIS^.Maximum     := fMaximum;
+THIS^.Minimum     := fMinimum;
+THIS^._fbI.Tn     := LTIME#1S;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Feedback" Id="{29e50737-296c-088b-201e-74326d9cd692}">
+      <Declaration><![CDATA[(*
+Gets or sets the process variable (PV).
+
+Used by the observer to estimate the process state and total disturbance.
+*)
+PROPERTY Feedback : LREAL]]></Declaration>
+      <Get Name="Get" Id="{5d1ba64c-6fff-07a0-17e3-e29e5f4fc1c9}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Feedback := THIS^._fFeedback;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{e5ef2021-8d2d-05fe-01ec-f92a0f7dd82c}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fFeedback := Feedback;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="IntegratorBounds" Id="{e3c0378b-c5c5-0dbe-3234-b2020b6e50a5}">
+      <Declaration><![CDATA[(*
+Gets the integrator bounds interface.
+
+Use this to set independent upper and lower limits on the integrator output,
+separate from the output clamp. Useful when the actuator range differs from
+the process range.
+*)
+PROPERTY IntegratorBounds : I_Bounded]]></Declaration>
+      <Get Name="Get" Id="{67538b91-4283-04ff-0d59-e48afcf82837}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[IntegratorBounds := THIS^._fbI;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{19ce2bce-4d1c-0c20-0c94-abc8e23cbb40}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[RETURN(IntegratorBounds = 0);
+THIS^._fbI.Maximum := IntegratorBounds.Maximum;
+THIS^._fbI.Minimum := IntegratorBounds.Minimum;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Ki" Id="{9e4bb459-a1a0-01ea-28cf-27a4fb0d7fcb}">
+      <Declaration><![CDATA[(*
+Gets or sets the manual integral gain.
+
+Only used when :attr:`AutoKi` is ``FALSE``. A higher value eliminates
+steady-state offset faster but risks overshoot. Start low and increase gradually.
+*)
+PROPERTY Ki : LREAL]]></Declaration>
+      <Get Name="Get" Id="{76ae81c3-cfb9-0953-076d-bf576cfd4d1c}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Ki := THIS^._fKi;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{b4ca6900-99c6-0e8a-23c1-eb87b38bb301}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fKi := Ki;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Maximum" Id="{926ae9ae-a3c3-0b6f-36b5-9d413371e03a}">
+      <Declaration><![CDATA[(*
+Gets or sets the upper output clamp.
+
+Internally clamped to be greater than or equal to :attr:`Minimum`.
+Set this before :attr:`Minimum` to ensure the guard applies correctly.
+*)
+PROPERTY Maximum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{e10907cb-bc49-0b63-2edc-5eb91d56ca1b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Maximum := THIS^._fbClamp.Maximum;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{377c4d46-c01f-0fc6-0280-9551ff07897d}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbClamp.Maximum := Maximum;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Minimum" Id="{89f4d635-7d19-0a7e-365c-67da9bb7e0ec}">
+      <Declaration><![CDATA[(*
+Gets or sets the lower output clamp.
+
+Internally clamped to be less than or equal to :attr:`Maximum`.
+Set :attr:`Maximum` before this property to ensure the guard applies correctly.
+*)
+PROPERTY Minimum : LREAL]]></Declaration>
+      <Get Name="Get" Id="{672590e7-d573-0409-2c7c-628790c3bc1b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Minimum := THIS^._fbClamp.Minimum;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{4b745e54-321d-04e3-3973-238577484f80}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbClamp.Minimum := Minimum;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Mode" Id="{05d7bf3c-ff28-0df9-254e-0720471d9361}">
+      <Declaration><![CDATA[(*
+Gets or sets the operating mode.
+
+In :attr:`~E_ControllerMode.Auto` mode the output is computed from :attr:`Setpoint`
+and :attr:`Feedback`. In :attr:`~E_ControllerMode.Manual` mode the output tracks
+:attr:`Setpoint` directly through the output clamp. The observer continues
+running in manual mode so switching to auto produces no jump in output.
+*)
+PROPERTY Mode : E_ControllerMode]]></Declaration>
+      <Get Name="Get" Id="{c2cb6a19-f188-0e72-3bf3-2ab1c4be8466}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Mode := THIS^._eMode;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{ef49b6ae-a9bb-0501-0428-a840b00e7721}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._eMode := Mode;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Reset" Id="{6e51d26f-8351-0d95-14c2-ef695b6d20ec}">
+      <Declaration><![CDATA[(* Resets all internal components and sets the output to zero. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fbESO.Reset();
+THIS^._fbI.Reset();
+THIS^._fbLSEF.Reset();
+THIS^._fbClamp.Input := 0;
+THIS^._fbClamp.Run();
+THIS^._fOutput := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{4469c4bd-fbc0-0a88-3ca7-01e78aa176ae}">
+      <Declaration><![CDATA[(*
+Advances the ADRC by one time step.
+
+.. note::
+   Must be called once per cycle on a single PLC task.
+*)
+METHOD Run
+VAR_INST
+	{attribute 'hide'}
+	bInit       : BOOL := TRUE;
+	{attribute 'hide'}
+	fbTaskCycle : FsCommon.FB_PlcTaskCycleChangeDetector(0);
+END_VAR
+VAR
+	fKi         : LREAL;
+	fObsError   : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF FsCommon.F_ResetOnTrue(bInit) THEN
+	fbTaskCycle.TaskIndex := FsCommon.F_GetCurrentTaskIndex();
+END_IF
+
+RETURN(NOT fbTaskCycle.HasChanged);
+
+THIS^._fbESO.B0  := THIS^._fB0;
+THIS^._fbLSEF.B0 := THIS^._fB0;
+
+fKi := SEL(THIS^._bAutoKi, THIS^._fKi, THIS^._fbLSEF.Wc * THIS^._fbLSEF.Wc);
+
+IF THIS^._bEnable THEN
+	CASE THIS^._eMode OF
+		E_ControllerMode.Auto:
+			THIS^._fbESO.InputU := THIS^._fOutput;
+			THIS^._fbESO.InputY := THIS^._fFeedback;
+			THIS^._fbESO.Run();
+
+			fObsError := THIS^._fSetpoint - THIS^._fbESO.Z1;
+
+			// Integral action on observer error
+			THIS^._fbI.Input           := fObsError;
+			THIS^._fbI.ComparatorInput := THIS^._fbClamp.Residual;
+			THIS^._fbI.Run();
+
+			THIS^._fbLSEF.Setpoint := THIS^._fSetpoint;
+			THIS^._fbLSEF.Z1       := THIS^._fbESO.Z1;
+			THIS^._fbLSEF.Z2       := THIS^._fbESO.Z2;
+			THIS^._fbLSEF.Integral := THIS^._fbI.Output * fKi;
+			THIS^._fbLSEF.Run();
+
+			THIS^._fbClamp.Input := THIS^._fbLSEF.Output;
+			THIS^._fbClamp.Run();
+			THIS^._fOutput := THIS^._fbClamp.Output;
+
+		E_ControllerMode.Manual:
+			THIS^._fbESO.InputU := THIS^._fSetpoint;
+			THIS^._fbESO.InputY := THIS^._fFeedback;
+			THIS^._fbESO.Run();
+
+			fObsError := THIS^._fSetpoint - THIS^._fbESO.Z1;
+			THIS^._fbI.Sync(THIS^._fSetpoint - THIS^._fbLSEF.Wc * fObsError);
+			THIS^._fbI.Input           := fObsError;
+			THIS^._fbI.ComparatorInput := 0;
+			THIS^._fbI.Run();
+
+			THIS^._fbClamp.Input := THIS^._fSetpoint;
+			THIS^._fbClamp.Run();
+			THIS^._fOutput := THIS^._fbClamp.Output;
+	ELSE
+		THIS^._fbESO.Reset();
+		THIS^._fbI.Reset();
+		THIS^._fbLSEF.Reset();
+		THIS^._fbClamp.Input := 0;
+		THIS^._fbClamp.Run();
+		THIS^._fOutput := 0;
+	END_CASE
+ELSE
+	THIS^._fbESO.Reset();
+	THIS^._fbI.Reset();
+	THIS^._fbLSEF.Reset();
+	THIS^._fbClamp.Input := 0;
+	THIS^._fbClamp.Run();
+	THIS^._fOutput := 0;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Setpoint" Id="{0b2e2a13-4d63-0750-1faf-f5c2e7b83af5}">
+      <Declaration><![CDATA[(* 
+Gets or sets the setpoint. 
+
+In :attr:`~E_ControllerMode.Manual` mode this is used as 
+the manual output value, routed directly through the output clamp.
+*)
+PROPERTY Setpoint : LREAL]]></Declaration>
+      <Get Name="Get" Id="{d635cb91-d2f8-0e68-354c-8c554b452c1c}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Setpoint := THIS^._fSetpoint;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{2b863435-86dd-0a1e-3d64-18ef2ca03ce7}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fSetpoint := LIMIT(THIS^.Minimum, Setpoint, THIS^.Maximum);
+]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Wc" Id="{94a71e44-d6a5-0c83-2b36-22586889b2cc}">
+      <Declaration><![CDATA[(*
+Gets or sets the controller bandwidth in rad/s.
+
+Controls the speed of the closed-loop response. A higher value gives a faster
+response but risks overshoot and noise sensitivity. For a process that should
+settle in roughly 10 seconds, start with ``Wc = 0.5`` rad/s and increase gradually.
+*)
+PROPERTY Wc : LREAL]]></Declaration>
+      <Get Name="Get" Id="{d89736c7-8907-005c-2e61-14c1de2131ef}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Wc := THIS^._fbLSEF.Wc;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{5efe135a-7f2b-01c1-2d04-678aab9b4669}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbLSEF.Wc := Wc;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Wo" Id="{bba61020-ea06-0665-2f60-08d5c1be3e23}">
+      <Declaration><![CDATA[(*
+Gets or sets the observer bandwidth in rad/s.
+
+Controls how quickly disturbances are estimated and rejected. Set to 3–5 times
+:attr:`Wc`. For stability ensure ``Wo * T < 1`` where ``T`` is the task cycle
+time in seconds. For a 10ms task, keep ``Wo`` below 100 rad/s.
+*)
+PROPERTY Wo : LREAL]]></Declaration>
+      <Get Name="Get" Id="{168ce49f-fdc0-0686-2c46-260cd9bee2c9}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Wo := THIS^._fbESO.Wo ;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{f4da06a5-9796-01c3-0cb9-b2464f68ecab}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fbESO.Wo  := Wo;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>
