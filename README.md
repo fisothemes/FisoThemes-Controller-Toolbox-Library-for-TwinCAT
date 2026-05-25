@@ -2,7 +2,9 @@
 
 ## Overview
 
-A library of composable building blocks for modelling and building control systems in TwinCAT. Rather than providing a single monolithic PID block, the library exposes individual signal generators, plant simulators, controller components, filters, and signal conditioning blocks that can be wired together to suit the application.
+A library of composable building blocks for modelling and building control systems in TwinCAT. It exposes individual signal generators, plant simulators, controller components, filters, signal conditioning, and signal transformation blocks that can be wired together to suit the application. 
+
+For convenience, there is a ready-made production grade `FB_PID` controller or an experimental `FB_LADRC`. You can use these as a template for your own controllers.
 
 ## Dependencies
 
@@ -11,14 +13,14 @@ FsControllerToolbox depends on the following libraries:
 
 ## Library Structure
 
-| Category         | Description                                                        |
-|------------------|--------------------------------------------------------------------|
-| **Signals**      | Periodic and aperiodic signal generators (sine, square, triangle, sawtooth, PWM, ramp). |
-| **Simulation**   | Discrete-time plant models for closed-loop testing.                |
-| **Control**      | Proportional, integral, and derivative controller components.      |
-| **Filters**      | Signal filtering blocks.                                           |
-| **Conditioning** | Signal shaping blocks (deadband, hysteresis, clamp, rate limiter). |
-| **Transform**    | Signal transformation blocks (linear scaler, quantizer).           |
+| Category         | Description                                                                                 |
+|------------------|---------------------------------------------------------------------------------------------|
+| **Signals**      | Periodic and aperiodic signal generators (sine, square, triangle, sawtooth, PWM, ramp, ramp profile, white noise, Gaussian noise). |
+| **Simulation**   | Discrete-time plant models for closed-loop testing (first-order, second-order, Padé delay). |
+| **Control**      | Proportional, integral, derivative, PID, and ADRC controller components.                    |
+| **Filters**      | Signal filtering blocks (first-order IIR).                                                  |
+| **Conditioning** | Signal shaping blocks (deadband, hysteresis, clamp, rate limiter).                          |
+| **Transform**    | Signal transformation blocks (linear scaler, quantizer, gain, bias).                        |
 
 ## Usage
 
@@ -55,16 +57,34 @@ fbPlant.Run();
 fOutput := fbPlant.Output;
 ```
 
+To add transport delay to a plant:
+
+```js
+VAR
+    fControlOutput : LREAL := 1;
+    fPlantOutput   : LREAL;
+    fbDelay        : FB_PadeDelay(tDelayTime := LTIME#10S);
+    fbPlant        : FB_FirstOrderPlant(fGain := 1.0, tTau := LTIME#5S);
+END_VAR
+
+fbDelay.Input := fControlOutput;
+fbDelay.Run();
+
+fbPlant.Input := fbDelay.Output;
+fbPlant.Run();
+fPlantOutput := fbPlant.Output;
+```
+
 ### Building a PID Controller
 
-The library provides `FB_ProportionalGain`, `FB_Integrator`, and `FB_Differentiator` function blocks that can be composed into any PID form. The input to each block is the error signal (`Setpoint - ProcessVariable`), computed by the caller.
+The library provides `FB_ProportionalGain`, `FB_Integrator`, `FB_ClampingIntegrator`, `FB_TrackingIntegrator`, and `FB_Differentiator` function blocks that can be composed into any PID form. The error signal (`Setpoint - ProcessVariable`) is computed by the caller.
 
 #### Parallel Form
 
 Each term operates independently on the raw error. `Kp`, `Ki`, and `Kd` are fully decoupled.
 
 <p align="center">
-  <img src="./assets/imgs/pid-parallel.png", alt="PID Parallel Form" />
+  <img src="./assets/imgs/pid-parallel.drawio.svg" alt="PID Parallel Form" />
 </p>
 
 ```js
@@ -74,105 +94,242 @@ VAR
     fError    : LREAL;
     fbPlant   : FB_FirstOrderPlant(fGain := 1.0, tTau := LTIME#5S);
     fbP       : FB_ProportionalGain(fKp := 2.0);
-    fbI       : FB_Integrator(
-                    tTn                   := LTIME#5S,
-                    fMaximum              := 100.0,
-                    fMinimum              := 0.0,
-                    eAntiWindupMethod     := E_AntiWindupMethod.BackCalculation,
-                    tTrackingTimeConstant := LTIME#2S200MS
-                );
+    fbI       : FB_Integrator(tTn := LTIME#5S);
     fbD       : FB_Differentiator(tTv := LTIME#1S, tTd := LTIME#200MS);
 END_VAR
 
-fError := fSetpoint - fbPlant.Output;
+fbI.Maximum := 100.0;
+fbI.Minimum := 0.0;
 
-fbP.Input := fError;
-fbP.Run();
-fbI.Input := fError;
-fbI.Run();
-fbD.Input := fError;
-fbD.Run();
+fOutput := fbPlant.Output;
+
+fError := fSetpoint - fOutput;
+
+fbP.Input := fError; fbP.Run();
+fbI.Input := fError; fbI.Run();
+fbD.Input := fError; fbD.Run();
 
 fbPlant.Input := fbP.Output + fbI.Output + fbD.Output;
 fbPlant.Run();
-
-fOutput := fbPlant.Output;
 ```
 
 #### Standard (Ideal) Form
 
-The integral and derivative terms receive the proportional output rather than the raw error, so `Tn` and `Tv` are relative to `Kp`.
+The integral and derivative terms receive the proportional output rather than the raw error, so `Tn` and `Tv` scale relative to `Kp`. `FB_ClampingIntegrator` prevents integrator windup when the output saturates. The `Mode` property controls the integrator behaviour during saturation: `E_AntiWindupMode.Hold` freezes the integrator output at its last value, while `E_AntiWindupMode.Off` resets it to zero effectively disabling it.
 
 <p align="center">
-  <img src="./assets/imgs/pid-ideal.png", alt="PID Ideal Form" />
+  <img src="./assets/imgs/pid-ideal-clamping.drawio.svg" alt="PID Ideal Form" />
 </p>
 
 ```js
-fError := fSetpoint - fbPlant.Output;
+VAR
+    fSetpoint : LREAL;
+    fOutput   : LREAL;
+    fError    : LREAL;
+    fbPlant   : FB_FirstOrderPlant(fGain := 1.0, tTau := LTIME#5S);
+    fbP       : FB_ProportionalGain(fKp := 2.0);
+    fbI       : FB_ClampingIntegrator(tTn := LTIME#5S, eMode := E_AntiWindupMode.Hold);
+    fbD       : FB_Differentiator(tTv := LTIME#1S, tTd := LTIME#200MS);
+    fbClamp   : FB_Clamp(fMaximum := 100.0, fMinimum := 0.0);
+END_VAR
 
-fbP.Input := fError;
-fbP.Run();
-fbI.Input := fbP.Output;
-fbI.Run();
-fbD.Input := fbP.Output;
-fbD.Run();
-
-fbPlant.Input := fbP.Output + fbI.Output + fbD.Output;
-fbPlant.Run();
+fbI.Maximum := fbClamp.Maximum;
+fbI.Minimum := fbClamp.Minimum;
 
 fOutput := fbPlant.Output;
+
+fError := fSetpoint - fOutput;
+
+fbP.Input           := fError; fbP.Run();
+fbI.Input           := fbP.Output;
+fbI.ComparatorInput := fbClamp.Residual; fbI.Run();
+fbD.Input           := fbP.Output; fbD.Run();
+
+fbClamp.Input := fbP.Output + fbI.Output + fbD.Output;
+fbClamp.Run();
+
+fbPlant.Input := fbClamp.Output;
+fbPlant.Run();
 ```
 
 #### Series (Interacting) Form
 
-Each term feeds into the next. The overall gain of each term is influenced by the others.
+The proportional output feeds into the integral term, and the sum of both feeds into the derivative term, coupling all three terms in series. `FB_TrackingIntegrator` is used here for back-calculation anti-windup, feeding the clamp residual back to unwind the integrator gradually when the output saturates.
 
 <p align="center">
-  <img src="./assets/imgs/pid-series.png", alt="PID Series Form" />
+  <img src="./assets/imgs/pid-series.drawio.svg" alt="PID Series Form" />
 </p>
 
 ```js
-fError := fSetpoint - fbPlant.Output;
+VAR
+    fSetpoint : LREAL;
+    fOutput   : LREAL;
+    fError    : LREAL;
+    fbPlant   : FB_FirstOrderPlant(fGain := 1.0, tTau := LTIME#5S);
+    fbP       : FB_ProportionalGain(fKp := 2.0);
+    fbI       : FB_TrackingIntegrator(tTn := LTIME#5S, tTt := LTIME#2S200MS);
+    fbD       : FB_Differentiator(tTv := LTIME#1S, tTd := LTIME#200MS);
+    fbClamp   : FB_Clamp(fMaximum := 100.0, fMinimum := 0.0);
+END_VAR
 
-fbP.Input := fError;
-fbP.Run();
-fbI.Input := fbP.Output;
-fbI.Run();
-fbD.Input := fbP.Output + fbI.Output;
-fbD.Run();
-
-fbPlant.Input := fbP.Output + fbI.Output + fbD.Output;
-fbPlant.Run();
+fbI.Maximum := fbClamp.Maximum;
+fbI.Minimum := fbClamp.Minimum;
 
 fOutput := fbPlant.Output;
+
+fError := fSetpoint - fOutput;
+
+fbP.Input           := fError; fbP.Run();
+fbI.Input           := fbP.Output;
+fbI.ComparatorInput := fbClamp.Residual; fbI.Run();
+fbD.Input           := fbP.Output + fbI.Output; fbD.Run();
+
+fbClamp.Input := fbP.Output + fbI.Output + fbD.Output;
+fbClamp.Run();
+
+fbPlant.Input := fbClamp.Output;
+fbPlant.Run();
 ```
 
-source: [blog.opticontrols.com](https://blog.opticontrols.com/pid-controller-forms/)
+### Using the PID Block
 
-### Generating Signals
+`FB_PID` provides a ready-made ideal-form PID controller with clamped output, clamping-based anti-windup, and bumpless manual-to-auto transfer. The derivative acts on the negated process variable rather than the error, avoiding a derivative spike when the setpoint changes.
 
-Signal generators implement `FsCommon.I_Runnable` and expose a read-only `Output` property. They must be called once per scan (may change in the future).
+<p align="center">
+  <img src="./assets/imgs/pid.drawio.svg" alt="PID" />
+</p>
 
 ```js
 VAR
-    fbSine    : FB_SineWave(
-                    tPeriod    := LTIME#2S,
-                    fAmplitude := 5.0, 
-                    fBias      := 0.0, 
-                    fPhase     := 0.0
-                );
-    fbSquare  : FB_SquareWave(
-                    tPeriod    := LTIME#2S,
-                    fAmplitude := 1.0,
-                    fBias      := 0.0,
-                    fPhase     := 0.0
-                );
+    fSetpoint : LREAL;
+    fOutput   : LREAL;
+    fbPlant   : FB_FirstOrderPlant(fGain := 2.0, tTau := LTIME#5S);
+    fbPID     : FB_PID(
+                    fKp      := 2.0,
+                    tTn      := LTIME#5S,
+                    tTv      := LTIME#1S,
+                    tTd      := LTIME#300MS,
+                    fMaximum := 100.0,
+                    fMinimum := 0.0);
+END_VAR
+
+fOutput := fbPlant.Output;
+
+// Optional: Set the integrator bounds.
+fbPID.IntegratorBounds.Maximum := fbPID.Maximum;
+fbPID.IntegratorBounds.Minimum := fbPID.Minimum;
+
+fbPID.Setpoint := fSetpoint;
+fbPID.Feedback := fOutput;
+fbPID.Run();
+
+fbPlant.Input := fbPID.Output;
+fbPlant.Run();
+```
+
+To switch to manual mode and back without a bump:
+
+```js
+// Switch to manual and set desired output via Setpoint
+fbPID.Mode     := E_ControllerMode.Manual;
+fbPID.Setpoint := 50.0; // output will be clamped to [Minimum, Maximum]
+
+// Switch back to auto and observe the output resume smoothly from 50.0
+fbPID.Mode := E_ControllerMode.Auto;
+```
+
+### Using the ADRC Block
+
+`FB_LADRC` provides a Linear Active Disturbance Rejection Controller (LADRC) which is an alternative to PID. It actively estimates and cancels disturbances, unmodelled dynamics, and plant non-linearities in real time using an Extended State Observer. Unlike PID, it does not require a precise plant model; inaccuracies in `b0` are treated as disturbance and cancelled automatically.
+
+> [!WARNING]
+>
+> This block is highly experimental. It is not recommended for production use.
+>
+
+By default the integral action time is derived automatically as `Tn = 1 / Wc²`. Set `AutoTn := FALSE` to tune `Tn` manually is you experience instability or overshoots.
+
+```js
+VAR
+    fSetpoint : LREAL;
+    fOutput   : LREAL;
+    fbPlant   : FB_FirstOrderPlant(fGain := 2.0, tTau := LTIME#5S);
+    fbADRC    : FB_LADRC(
+	                fB0      := 0.1,
+                    fWc      := 5,
+                    fWo      := 30,
+                    fMaximum := 100.0,
+                    fMinimum := 0.0);
+END_VAR
+
+
+fOutput := fbPlant.Output;
+
+// Optional: Tune Tn manually
+fbADRC.AutoTn   := FALSE;
+fbADRC.Tn	    := LTIME#2S500MS;
+
+fbADRC.Setpoint := fSetpoint;
+fbADRC.Feedback := fOutput;
+fbADRC.Run();
+
+fbPlant.Input   := fbADRC.Output;
+fbPlant.Run();
+```
+
+
+### Generating Signals
+
+Signal generators implement `FsCommon.I_Runnable` and expose a read-only `Output` property.
+
+```js
+VAR
+    fbSine    : FB_SineWave(tPeriod := LTIME#2S, fAmplitude := 5.0, fBias := 0.0, fPhase := 0.0);
+    fbSquare  : FB_SquareWave(tPeriod := LTIME#2S, fAmplitude := 1.0, fBias := 0.0, fPhase := 0.0);
     fbRamp    : FB_Ramp(fStartValue := 0.0, fRate := 1.0);
+    fbProfile : FB_RampProfile(fStartValue := 0.0, fTarget := 100.0, tDuration := LTIME#30S);
 END_VAR
 
 fbSine.Run();
 fbSquare.Run();
 fbRamp.Run();
+fbProfile.Run();
+```
+
+### Generating Signals
+
+Signal generators implement `FsCommon.I_Runnable` and expose a read-only `Output` property. They must be called once per scan (this may change in the future).
+
+```js
+VAR
+    fbSine    : FB_SineWave(tPeriod := LTIME#2S, fAmplitude := 5.0, fBias := 0.0, fPhase := 0.0);
+    fbSquare  : FB_SquareWave(tPeriod := LTIME#2S, fAmplitude := 1.0, fBias := 0.0, fPhase := 0.0);
+    fbRamp    : FB_Ramp(fStartValue := 0.0, fRate := 1.0);
+    fbProfile : FB_RampProfile(fStartValue := 0.0, fTarget := 100.0, tDuration := LTIME#30S);
+END_VAR
+
+fbSine.Run();
+fbSquare.Run();
+fbRamp.Run();
+fbProfile.Run();
+```
+
+### Adding Noise to a Simulation
+
+`FB_WhiteNoise` and `FB_GaussianNoise` add realistic measurement noise to simulation signals.
+
+```js
+VAR
+    fRawSignal   : LREAL;
+    fNoisySignal : LREAL;
+	fbSquare     : FB_SquareWave(tPeriod := LTIME#2S, fAmplitude := 1.0, fBias := 0.0, fPhase := 0.0);
+    fbNoise      : FB_GaussianNoise(fMean := 0.0, fStdDev := 0.1);
+END_VAR
+
+fbSquare.Run();
+fRawSignal   := fbSquare.Output;
+fbNoise.Run();
+fNoisySignal := fRawSignal + fbNoise.Output;
 ```
 
 ### Filtering a Signal
@@ -180,21 +337,16 @@ fbRamp.Run();
 `FB_FirstOrderIIRFilter` applies an exponential moving average to smooth a noisy input.
 
 <p align="center">
-  <img src="./assets/imgs/filtered-signal.png", alt="Filtered Signal" />
+  <img src="./assets/imgs/filtered-signal.png" alt="Filtered Signal" />
 </p>
 
 ```js
 VAR
-    fRawSignal    : LREAL;
-    fSmoothed     : LREAL;
-    fbSignal        : FB_SineWave(
-                        tPeriod    := LTIME#2S,
-                        fAmplitude := 5.0, 
-                        fBias      := 0.0, 
-                        fPhase     := 0.0
-                    );
-    fbGenRand     : FsCommon.FB_RandomNumberGenerator(0);
-    fbFilter      : FB_FirstOrderIIRFilter(fAlpha := 0.1);
+    fRawSignal : LREAL;
+    fSmoothed  : LREAL;
+    fbSignal   : FB_SineWave(tPeriod := LTIME#2S, fAmplitude := 5.0, fBias := 0.0, fPhase := 0.0);
+    fbGenRand  : FsCommon.FB_RandomNumberGenerator(0);
+    fbFilter   : FB_FirstOrderIIRFilter(fAlpha := 0.1);
 END_VAR
 
 fbSignal.Run();
@@ -207,19 +359,13 @@ fbFilter.Run();
 fSmoothed := fbFilter.Output;
 ```
 
-`Alpha` controls the smoothing, a value closer to 0 produces a slower, smoother response; a value closer to 1 tracks the input more closely.
-
 ### Signal Conditioning
 
 `FB_Deadband` suppresses small signals within a configurable band:
 
 ```js
 VAR
-    fbDeadband : FB_Deadband(
-                    fMaximum := 0.5, 
-                    fMinimum := -0.5, 
-                    eMode    := E_DeadbandMode.Zero
-                 );
+    fbDeadband : FB_Deadband(fMaximum := 0.5, fMinimum := -0.5, eMode := E_DeadbandMode.Zero);
 END_VAR
 
 fbDeadband.Input := fError;
@@ -240,6 +386,31 @@ fbHysteresis.Run();
 bHeaterOn := fbHysteresis.Output;
 ```
 
+`FB_RateLimiter` constrains how quickly a signal can change:
+
+```js
+VAR
+    fbLimiter : FB_RateLimiter(fRisingLimit := 10.0, fFallingLimit := 5.0);
+END_VAR
+
+fbLimiter.Input := fControlOutput;
+fbLimiter.Run();
+```
+
+### Signal Transformation
+
+`FB_LinearScaler` maps a signal from one range to another:
+
+```js
+VAR
+    // Map PID output (0-100%) to valve position (4-20mA)
+    fbScaler : FB_LinearScaler(fInputMin := 0.0, fInputMax := 100.0, fOutputMin := 4.0, fOutputMax := 20.0);
+END_VAR
+
+fbScaler.Input := fbPID.Output;
+fbScaler.Run();
+```
+
 ## Developer Notes
 
-This project is at version 0.1.0. The API may change as the library grows. It is designed to be part of a larger framework that is still under development.
+This is still a work in progress. The API may change as the library grows.
