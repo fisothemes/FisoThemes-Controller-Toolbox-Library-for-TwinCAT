@@ -11,6 +11,10 @@ For convenience, there is a ready-made production grade `FB_PID` controller or a
 FsControllerToolbox depends on the following libraries:
 - **[FsCommon](https://github.com/fisothemes/FisoThemes-Common-Library-for-TwinCAT):** Provides common data structures and utilities.
 
+## Documentation
+
+The documentation for FsControllerToolbox is available [here](https://fisothemes.github.io/FisoThemes-Controller-Toolbox-Library-for-TwinCAT/).
+
 ## Library Structure
 
 | Category         | Description                                                                                 |
@@ -277,25 +281,6 @@ fbPlant.Input   := fbADRC.Output;
 fbPlant.Run();
 ```
 
-
-### Generating Signals
-
-Signal generators implement `FsCommon.I_Runnable` and expose a read-only `Output` property.
-
-```js
-VAR
-    fbSine    : FB_SineWave(tPeriod := LTIME#2S, fAmplitude := 5.0, fBias := 0.0, fPhase := 0.0);
-    fbSquare  : FB_SquareWave(tPeriod := LTIME#2S, fAmplitude := 1.0, fBias := 0.0, fPhase := 0.0);
-    fbRamp    : FB_Ramp(fStartValue := 0.0, fRate := 1.0);
-    fbProfile : FB_RampProfile(fStartValue := 0.0, fTarget := 100.0, tDuration := LTIME#30S);
-END_VAR
-
-fbSine.Run();
-fbSquare.Run();
-fbRamp.Run();
-fbProfile.Run();
-```
-
 ### Generating Signals
 
 Signal generators implement `FsCommon.I_Runnable` and expose a read-only `Output` property. They must be called once per scan (this may change in the future).
@@ -409,6 +394,36 @@ END_VAR
 
 fbScaler.Input := fbPID.Output;
 fbScaler.Run();
+```
+
+`FB_Quantizer` rounds a signal to the nearest step, useful for simulating actuators with discrete positions or testing how a controller handles quantisation:
+
+```js
+VAR
+    // Simulate a valve with 10 discrete positions (0%, 10%, 20%, ..., 100%)
+    fbQuantizer : FB_Quantizer(fStepSize := 10.0);
+END_VAR
+
+fbQuantizer.Input := fbPID.Output;
+fbQuantizer.Run();
+```
+
+`FB_Gain` and `FB_Bias` scale and offset signals:
+
+```js
+VAR
+    // Convert a 4-20mA current signal to 0-100%
+    fbBias  : FB_Bias(fBias := -4.0);   // Shift 4-20mA to 0-16mA
+    fbGain  : FB_Gain(fGain := 6.25);   // Scale 0-16mA to 0-100%
+END_VAR
+
+fbBias.Input := fCurrentSignal;
+fbBias.Run();
+
+fbGain.Input := fbBias.Output;
+fbGain.Run();
+
+fPercent := fbGain.Output;
 ```
 
 ## Developer Notes
