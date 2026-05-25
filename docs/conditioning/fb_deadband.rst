@@ -19,13 +19,25 @@ the band the input passes through unchanged.
    FUNCTION_BLOCK FINAL FB_Deadband EXTENDS FB_SisoComponent
    IMPLEMENTS FsCommon.I_Runnable, I_Resettable
    VAR
-   	_fMinimum : LREAL; // Lower bound of the deadband. Clamped to <= Maximum.
-   	_fMaximum : LREAL; // Upper bound of the deadband. Clamped to >= Minimum.
-   	_eMode    : E_DeadbandMode; // Output behaviour when input is within the band.
+   	_fMinimum  : LREAL; // Lower bound of the deadband. Clamped to <= Maximum.
+   	_fMaximum  : LREAL; // Upper bound of the deadband. Clamped to >= Minimum.
+   	_eMode     : E_DeadbandMode; // Output behaviour when input is within the band.
+   	_bIsActive : BOOL; // TRUE when input is within deadband [Minimum..:=Maximum].
    END_VAR
 
 Properties
 ----------
+
+.. _fb_deadband.isactive:
+
+IsActive
+~~~~~~~~
+
+Type: ``BOOL``
+
+Gets whether the input is within the deadband's bounds.
+
+``TRUE`` when the output is being held or zeroed.
 
 .. _fb_deadband.maximum:
 

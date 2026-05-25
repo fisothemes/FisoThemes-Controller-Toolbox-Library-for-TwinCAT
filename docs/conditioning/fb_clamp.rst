@@ -16,10 +16,11 @@ through unchanged.
 .. code-block:: none
 
    FUNCTION_BLOCK FINAL FB_Clamp EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable
+   IMPLEMENTS FsCommon.I_Runnable, I_Bounded
    VAR
-   	_fMaximum : LREAL; // Upper clamp bound. Clamped to >= Minimum.
-   	_fMinimum : LREAL; // Lower clamp bound. Clamped to <= Maximum.
+   	_fMaximum  : LREAL; // Upper clamp bound. Clamped to >= Minimum.
+   	_fMinimum  : LREAL; // Lower clamp bound. Clamped to <= Maximum.
+   	_fResidual : LREAL; // Difference between the unclamped input and the clamped output.
    END_VAR
 
 Properties
@@ -48,6 +49,15 @@ Gets or sets the lower clamp bound.
 
 Internally clamped to be less than or equal to :attr:`Maximum`.
 Set :attr:`Maximum` before this property to ensure the guard applies correctly.
+
+.. _fb_clamp.residual:
+
+Residual
+~~~~~~~~
+
+Type: ``LREAL``
+
+Gets the difference between the unclamped input and the clamped output. Zero when the input is within [:attr:`Minimum`, :attr:`Maximum`].
 
 Methods
 -------
