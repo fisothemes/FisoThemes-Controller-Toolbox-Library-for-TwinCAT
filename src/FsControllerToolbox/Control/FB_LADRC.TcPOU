@@ -10,15 +10,16 @@ State Observer (ESO). The integral term eliminates steady-state offset.
 
 Tuning procedure:
 
-1. Estimate :attr:`B0` from a step test — apply a known control output and
-   measure the initial rate of change of the process variable.
+1. Estimate :attr:`B0` from a step test by applying a known control output and
+   measuring the initial rate of change of the process variable.
 2. Set :attr:`Wc` to roughly the desired closed-loop bandwidth. For a process
    that should settle in 10 seconds, start with ``Wc = 0.5`` rad/s.
 3. Set :attr:`Wo` to 3–5 times :attr:`Wc` and increase if disturbance rejection
    is too slow.
-4. If :attr:`AutoKi` is ``TRUE`` (default), the integral gain is derived
-   automatically as :math:`K_i = \omega_c^2`. Set :attr:`AutoKi` to ``FALSE``
-   to tune :attr:`Ki` manually if the automatic value causes overshoot.
+4. By default :attr:`AutoTn` is ``TRUE`` and the integral action time is derived
+   automatically as :math:`T_n = 1 / \omega_c^2`. Set :attr:`AutoTn` to ``FALSE``
+   and tune :attr:`Tn` manually if the automatic value causes overshoot or instability.
+   ``LTIME#0`` disables integral action entirely.
 
 In :attr:`~E_ControllerMode.Manual` mode the output tracks :attr:`Setpoint`
 directly through the output clamp. The observer and integrator continue running
@@ -41,13 +42,13 @@ in output.
 FUNCTION_BLOCK FINAL FB_LADRC EXTENDS FB_SoComponent
 IMPLEMENTS FsCommon.I_Runnable, I_Resettable, I_Bounded
 VAR
-	_fSetpoint  : LREAL;               // Setpoint (SP).
-	_fFeedback  : LREAL;               // Process variable (PV).
-	_bEnable    : BOOL := TRUE;        // When FALSE all components are reset and output is held at zero.
-	_bAutoKi    : BOOL := TRUE;        // When TRUE Ki is derived automatically as Wc².
-	_fKi        : LREAL;               // Integral gain. Used when AutoKi is FALSE.
+	_fSetpoint  : LREAL; // Setpoint (SP).
+	_fFeedback  : LREAL; // Process variable (PV).
+	_bEnable    : BOOL := TRUE; // When FALSE all components are reset and output is held at zero.
+	_bAutoTn    : BOOL := TRUE; // When TRUE Tn is derived automatically as 1/Wc².
+	_tTn        : LTIME := LTIME#1S; // Integral action time. Used when AutoTn is FALSE.
 	_eMode      : E_ControllerMode := E_ControllerMode.Auto;
-	_fB0        : LREAL;               // Backing variable for the ESO and LSEF's b0.
+	_fB0        : LREAL; // Backing variable for the ESO and LSEF's b0.
 	_fbESO      : FB_ExtendedStateObserver(fWo := 0, fB0 := 0);
 	_fbI        : FB_ClampingIntegrator(tTn := LTIME#0S, eMode := E_AntiWindupMode.Hold);
 	_fbLSEF     : FB_LinearStateErrorFeedback(fWc := 0, fB0 := 0);
@@ -58,21 +59,21 @@ END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
     </Implementation>
-    <Property Name="AutoKi" Id="{f0718c8e-ce34-09a8-0442-97b42bf7afee}">
+    <Property Name="AutoTn" Id="{f0718c8e-ce34-09a8-0442-97b42bf7afee}">
       <Declaration><![CDATA[(*
-Gets or sets whether the integral gain is derived automatically.
+Gets or sets whether the integral action time is derived automatically.
 
-When ``TRUE`` (default), :attr:`Ki` is computed as :math:`\omega_c^2`. This
-is a good starting point for most processes. Set to ``FALSE`` to tune
-:attr:`Ki` manually if the automatic value causes overshoot or instability.
+When ``TRUE`` (default), :attr:`Tn` is computed as :math:`1 / \omega_c^2`.
+Set to ``FALSE`` to tune :attr:`Tn` manually if the automatic value causes
+overshoot or instability.
 *)
-PROPERTY AutoKi : BOOL]]></Declaration>
+PROPERTY AutoTn : BOOL]]></Declaration>
       <Get Name="Get" Id="{6bed178d-8ace-077a-2b08-cc20ac987fc3}">
         <Declaration><![CDATA[VAR
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[AutoKi := THIS^._bAutoKi;]]></ST>
+          <ST><![CDATA[AutoTn := THIS^._bAutoTn;]]></ST>
         </Implementation>
       </Get>
       <Set Name="Set" Id="{fc99b1d1-d924-07af-374f-9c276620bf33}">
@@ -80,7 +81,7 @@ END_VAR
 END_VAR
 ]]></Declaration>
         <Implementation>
-          <ST><![CDATA[THIS^._bAutoKi := AutoKi;]]></ST>
+          <ST><![CDATA[THIS^._bAutoTn := AutoTn;]]></ST>
         </Implementation>
       </Set>
     </Property>
@@ -143,9 +144,9 @@ END_VAR
 VAR_INPUT
 	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
 	bInCopyCode  : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	fB0          : LREAL; // Estimated plant gain.
 	fWc          : LREAL; // Controller bandwidth in rad/s.
 	fWo          : LREAL; // Observer bandwidth in rad/s. Typically 3–5 times Wc.
-	fB0          : LREAL; // Estimated plant gain.
 	fMaximum     : LREAL; // Upper output clamp.
 	fMinimum     : LREAL; // Lower output clamp.
 END_VAR
@@ -210,31 +211,6 @@ END_VAR
           <ST><![CDATA[RETURN(IntegratorBounds = 0);
 THIS^._fbI.Maximum := IntegratorBounds.Maximum;
 THIS^._fbI.Minimum := IntegratorBounds.Minimum;]]></ST>
-        </Implementation>
-      </Set>
-    </Property>
-    <Property Name="Ki" Id="{9e4bb459-a1a0-01ea-28cf-27a4fb0d7fcb}">
-      <Declaration><![CDATA[(*
-Gets or sets the manual integral gain.
-
-Only used when :attr:`AutoKi` is ``FALSE``. A higher value eliminates
-steady-state offset faster but risks overshoot. Start low and increase gradually.
-*)
-PROPERTY Ki : LREAL]]></Declaration>
-      <Get Name="Get" Id="{76ae81c3-cfb9-0953-076d-bf576cfd4d1c}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[Ki := THIS^._fKi;]]></ST>
-        </Implementation>
-      </Get>
-      <Set Name="Set" Id="{b4ca6900-99c6-0e8a-23c1-eb87b38bb301}">
-        <Declaration><![CDATA[VAR
-END_VAR
-]]></Declaration>
-        <Implementation>
-          <ST><![CDATA[THIS^._fKi := Ki;]]></ST>
         </Implementation>
       </Set>
     </Property>
@@ -358,7 +334,13 @@ RETURN(NOT fbTaskCycle.HasChanged);
 THIS^._fbESO.B0  := THIS^._fB0;
 THIS^._fbLSEF.B0 := THIS^._fB0;
 
-fKi := SEL(THIS^._bAutoKi, THIS^._fKi, THIS^._fbLSEF.Wc * THIS^._fbLSEF.Wc);
+IF THIS^._bAutoTn THEN
+    fKi := THIS^._fbLSEF.Wc * THIS^._fbLSEF.Wc;
+ELSIF THIS^._tTn > LTIME#0S THEN
+    fKi := 1.0 / (TO_LREAL(THIS^._tTn) / TO_LREAL(LTIME#1S));
+ELSE
+    fKi := 0;
+END_IF
 
 IF THIS^._bEnable THEN
 	CASE THIS^._eMode OF
@@ -439,6 +421,32 @@ END_VAR
         <Implementation>
           <ST><![CDATA[THIS^._fSetpoint := LIMIT(THIS^.Minimum, Setpoint, THIS^.Maximum);
 ]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Tn" Id="{9e4bb459-a1a0-01ea-28cf-27a4fb0d7fcb}">
+      <Declaration><![CDATA[(*
+Gets or sets the integral action time (Tn).
+
+Only used when :attr:`AutoTn` is ``FALSE``. Controls how aggressively the
+integral term corrects steady-state offset. A shorter value eliminates offset
+faster but risks overshoot. ``LTIME#0`` disables the integral term entirely.
+*)
+PROPERTY Tn : LTIME;]]></Declaration>
+      <Get Name="Get" Id="{76ae81c3-cfb9-0953-076d-bf576cfd4d1c}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Tn := THIS^._tTn;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{b4ca6900-99c6-0e8a-23c1-eb87b38bb301}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._tTn := Tn;]]></ST>
         </Implementation>
       </Set>
     </Property>
