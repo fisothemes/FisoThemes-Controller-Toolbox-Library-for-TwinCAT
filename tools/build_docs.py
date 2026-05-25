@@ -479,7 +479,7 @@ def main():
         'autosectionlabel_prefix_document = True',
         'suppress_warnings = ["autosectionlabel.*"]',
         '',
-        'html_theme = "furo"',
+        'html_theme = "sphinx_rtd_theme"',
         'html_title = f"{project} v{release}"',
         'html_theme_options = {',
         '    "light_css_variables": {',
