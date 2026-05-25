@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<TcSmProject xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4024.71">
+<TcSmProject xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4024.68">
 	<Project ProjectGUID="{379F5C60-7330-48AB-8F6E-A6AB4DA2CDEC}" Target64Bit="true" ShowHideConfigurations="#x6">
 		<System>
 			<Tasks>
@@ -13,7 +13,7 @@
 		</System>
 		<Plc>
 			<Project GUID="{9819E4C6-F52A-4484-A5CE-DD6112E7FBC0}" Name="FsControllerToolbox" PrjFilePath="FsControllerToolbox\FsControllerToolbox.plcproj" TmcFilePath="FsControllerToolbox\FsControllerToolbox.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="FsControllerToolbox\FsControllerToolbox.tmc" TmcHash="{FDA11991-156B-6891-8646-3C41383FF60B}">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="FsControllerToolbox\FsControllerToolbox.tmc" TmcHash="{34CE1F28-7C0E-708A-43D2-0364E6F89AE5}">
 					<Name>FsControllerToolbox Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Contexts>
@@ -33,7 +33,7 @@
 				</Instance>
 			</Project>
 			<Project GUID="{DF5DDDB8-A1C3-47CC-8A97-0E0C78BE0750}" Name="FsControllerToolboxTest" PrjFilePath="FsControllerToolboxTest\FsControllerToolboxTest.plcproj" TmcFilePath="FsControllerToolboxTest\FsControllerToolboxTest.tmc" ReloadTmc="true" AmsPort="852" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502040" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="FsControllerToolboxTest\FsControllerToolboxTest.tmc" TmcHash="{AE9BAC0F-2E2F-EDDE-B821-A3C9F52E11CF}">
+				<Instance Id="#x08502040" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="FsControllerToolboxTest\FsControllerToolboxTest.tmc" TmcHash="{466181AF-F5FA-D53A-8709-581A2D8ED584}">
 					<Name>FsControllerToolboxTest Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Contexts>
