@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.16">
   <POU Name="FB_LADRC" Id="{8e158e95-d7ad-06b7-1912-6e0fad7f4bfa}" SpecialFunc="None">
     <Declaration><![CDATA[(*
 Linear Active Disturbance Rejection Controller (LADRC) with integral action.
@@ -16,7 +16,7 @@ Tuning procedure:
    that should settle in 10 seconds, start with ``Wc = 0.5`` rad/s.
 3. Set :attr:`Wo` to 3–5 times :attr:`Wc` and increase if disturbance rejection
    is too slow.
-4. By default :attr:`AutoTn` is ``TRUE`` and the integral action time is derived
+4. By default :attr:`AutoTn` is ``FALSE``, when it is ``TRUE``, the integral action time is derived
    automatically as :math:`T_n = 1 / \omega_c^2`. Set :attr:`AutoTn` to ``FALSE``
    and tune :attr:`Tn` manually if the automatic value causes overshoot or instability.
    ``LTIME#0`` disables integral action entirely.
@@ -45,8 +45,8 @@ VAR
 	_fSetpoint  : LREAL; // Setpoint (SP).
 	_fFeedback  : LREAL; // Process variable (PV).
 	_bEnable    : BOOL := TRUE; // When FALSE all components are reset and output is held at zero.
-	_bAutoTn    : BOOL := TRUE; // When TRUE Tn is derived automatically as 1/Wc².
-	_tTn        : LTIME := LTIME#1S; // Integral action time. Used when AutoTn is FALSE.
+	_bAutoTn    : BOOL := FALSE; // When TRUE Tn is derived automatically as 1/Wc².
+	_tTn        : LTIME := LTIME#0S; // Integral action time. Used when AutoTn is FALSE.
 	_eMode      : E_ControllerMode := E_ControllerMode.Auto;
 	_fB0        : LREAL; // Backing variable for the ESO and LSEF's b0.
 	_fbESO      : FB_ExtendedStateObserver(fWo := 0, fB0 := 0);
