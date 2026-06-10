@@ -3,42 +3,47 @@
   <POU Name="PLAYGROUND" Id="{d78796e8-f8c4-458f-9526-8acd467209b8}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM INTERNAL PLAYGROUND
 VAR
-	fSetpoint 			: LREAL;
-	fOutputA, fOutputB  : LREAL;
-	fbPlantA, fbPlantB  : FB_FirstOrderPlant(fGain := 2.0, tTau := LTIME#5S);
-	fbPID	  			: FB_PID(
-							fKp := 2.0,
-							tTn := LTIME#5S,
-							tTv := LTIME#1S,
-							tTd := LTIME#200MS,
-							fMaximum := 100, 
-							fMinimum := 0);
-	fbADRC 				: FB_LADRC(
-							fWc      := 5.0,
-							fWo      := 25.0,
-							fb0      := 0.1,
-							fMaximum := 100,
-							fMinimum := 0);
+	fSetpoint 				: LREAL;
+	fOutputPID, fOutputADRC : LREAL;
+	fDutyPID, fDutyADRC		: LREAL;   
+	fbPlantPID, fbPlantADRC : FB_ThermalPlant;
+	fbPID	  				: FB_PID(
+								fKp := 4.0,
+								tTn := LTIME#12M,
+								tTv := LTIME#45S,
+								tTd := LTIME#10S,
+								fMaximum := 100, 
+								fMinimum := 0);
+	fbADRC 					: FB_LADRC(
+								fWc      := 4.0E-4, // °C/s per % duty
+								fWo      := 0.005,
+								fb0      := 0.02,
+								fMaximum := 100,
+								fMinimum := 0);
+	bInit      				: BOOL := TRUE;
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[fOutputA := fbPlantA.Output;
-fOutputB := fbPlantB.Output;
+      <ST><![CDATA[IF FsCommon.F_ResetOnTrue(bInit) THEN
+	fbPID.IntegratorBounds.Maximum 	:= 60.0;
+    fbPID.IntegratorBounds.Minimum 	:= 0.0;
+	fbADRC.AutoTn 					:= FALSE;
+    fbADRC.Tn 						:= LTIME#10M;
+END_IF
 
-fbPID.Setpoint  := fSetpoint;
-fbADRC.Setpoint := fSetpoint;
-
-fbPID.Feedback  := fOutputA;
-fbADRC.Feedback := fOutputB;
-
+fbPID.Setpoint 	 := fSetpoint;
+fbPID.Feedback 	 := fbPlantPID.Output;
 fbPID.Run();
+fbPlantPID.Input := fDutyPID := fbPID.Output;
+fbPlantPID.Run();
+fOutputPID 		 := fbPlantPID.Output;
+
+fbADRC.Setpoint 	 := fSetpoint;
+fbADRC.Feedback 	 := fbPlantADRC.Output;
 fbADRC.Run();
-
-fbPlantA.Input := fbPID.Output;
-fbPlantB.Input := fbADRC.Output;
-
-fbPlantA.Run();
-fbPlantB.Run();
+fbPlantADRC.Input 	 := fDutyADRC := fbADRC.Output;
+fbPlantADRC.Run();
+fOutputADRC 		 := fbPlantADRC.Output;
 
 ]]></ST>
     </Implementation>

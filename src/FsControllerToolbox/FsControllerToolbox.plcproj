@@ -88,6 +88,9 @@
     <Compile Include="Filter\FB_FirstOrderIIRFilter.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Internal\FB_ThermalPlant.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="PlcTask.TcTTO">
       <SubType>Code</SubType>
     </Compile>

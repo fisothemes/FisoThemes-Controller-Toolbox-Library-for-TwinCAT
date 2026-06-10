@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.15">
+  <POU Name="FB_ThermalPlant" Id="{f489892e-6bdc-0cd7-1b0d-0a87f924e227}" SpecialFunc="None">
+    <Declaration><![CDATA[// Plant for testing tuning by example.
+// It's an vessel on top of a hotplate with low thermal conductivity.
+// The goal is to control the temperature of this vessel.
+{attribute 'enable_dynamic_creation'}
+{attribute 'no_explicit_call' := 'direct call for this function block is not allowed'}
+FUNCTION_BLOCK INTERNAL FINAL FB_ThermalPlant EXTENDS FB_SisoComponent
+IMPLEMENTS FsCommon.I_Runnable, I_Resettable
+VAR
+	_fHotplateTemperature : LREAL;
+	_fAmbientTemperature  : LREAL := 20; // Ambient temperature, °C
+	_fDisturbance 		  : LREAL; // Extra °C injected at the vessel, for disturbance tests
+	// Vessel thermal model - converts hotplate °C rise to vessel °C rise.
+	// At steady state the vessel reaches ~80% of the heater temperature above ambient, so gain = 0.8.
+	_fbVessel   		  : FB_FirstOrderPlant(fGain := 0.8, tTau := LTIME#12M);
+	// Hotplate model - converts % duty to °C rise above ambient.
+	// At 100% duty the heater reaches 400°C from 20°C ambient, so gain = (400 - 20) / 100 = 3.8 °C/%
+    _fbHotplate 		  : FB_FirstOrderPlant(fGain := 3.8, tTau := LTIME#5M);
+	// Conduction dead time between hotplate and vessel.
+    _fbDelay  			  : FB_PadeDelay(tDelayTime := LTIME#1M30S);
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Reset" Id="{9288208f-0265-0b65-11c4-4bc4afd60cf7}">
+      <Declaration><![CDATA[(* Clears internal state and restores the component to its initial condition. *)
+METHOD Reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fbHotplate.Reset();
+THIS^._fbDelay.Reset();
+THIS^._fbVessel.Reset();
+
+THIS^._fOutput := THIS^._fHotplateTemperature := THIS^._fAmbientTemperature;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Run" Id="{b9a66f4f-f6be-0c2d-10cf-ab086b32ab55}">
+      <Declaration><![CDATA[(* Executes one cycle of the object's logic. Call only once per cycle on a single task. *)
+METHOD Run
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fbHotplate.Input := LIMIT(0, THIS^._fInput, 100);
+THIS^._fbHotplate.Run();
+THIS^._fHotplateTemperature := THIS^._fbHotplate.Output + THIS^._fAmbientTemperature;
+
+THIS^._fbDelay.Input := THIS^._fbHotplate.Output;
+THIS^._fbDelay.Run();
+
+THIS^._fbVessel.Input := THIS^._fbDelay.Output;
+THIS^._fbVessel.Run();
+
+THIS^._fOutput := THIS^._fbVessel.Output + THIS^._fAmbientTemperature + THIS^._fDisturbance;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
