@@ -10,7 +10,7 @@ FUNCTION_BLOCK INTERNAL FINAL FB_ThermalPlant EXTENDS FB_SisoComponent
 IMPLEMENTS FsCommon.I_Runnable, I_Resettable
 VAR
 	_fHotplateTemperature : LREAL;
-	_fAmbientTemperature  : LREAL := 20; // Ambient temperature, °C
+	_fAmbientTemperature  : LREAL; // Ambient temperature, °C
 	_fDisturbance 		  : LREAL; // Extra °C injected at the vessel, for disturbance tests
 	// Vessel thermal model - converts hotplate °C rise to vessel °C rise.
 	// At steady state the vessel reaches ~80% of the heater temperature above ambient, so gain = 0.8.
@@ -25,6 +25,55 @@ END_VAR
     <Implementation>
       <ST><![CDATA[]]></ST>
     </Implementation>
+    <Property Name="AmbientTemperature" Id="{636f0c25-f017-0c97-06a2-9071e34d092b}">
+      <Declaration><![CDATA[PROPERTY AmbientTemperature : LREAL]]></Declaration>
+      <Get Name="Get" Id="{79ae8939-e6f3-0ddd-01ea-a4e26575f795}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AmbientTemperature := THIS^._fAmbientTemperature;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{866e261b-aba9-0094-2802-c45b88400a4e}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fAmbientTemperature := AmbientTemperature;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Disturbance" Id="{447c52c1-7c0c-0914-18db-37f48bbe72a2}">
+      <Declaration><![CDATA[PROPERTY Disturbance : LREAL]]></Declaration>
+      <Get Name="Get" Id="{a41514d7-4b1f-066b-33db-274ff6317ac1}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Disturbance  := THIS^._fDisturbance;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{b7778efd-f57e-0f94-309d-d5cbecff002f}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[THIS^._fDisturbance := Disturbance ;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="HotplateTemperature" Id="{7f3633a8-500c-0434-12e0-7c634d66ec27}">
+      <Declaration><![CDATA[PROPERTY HotplateTemperature : LREAL]]></Declaration>
+      <Get Name="Get" Id="{69fa36c1-add0-0766-28c2-2a9b002aead7}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[HotplateTemperature := THIS^._fHotplateTemperature;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
     <Method Name="Reset" Id="{9288208f-0265-0b65-11c4-4bc4afd60cf7}">
       <Declaration><![CDATA[(* Clears internal state and restores the component to its initial condition. *)
 METHOD Reset
