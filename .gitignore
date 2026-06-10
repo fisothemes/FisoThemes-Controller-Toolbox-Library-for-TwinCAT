@@ -282,3 +282,6 @@ _CompileInfo/
 
 assets/files/LICENSE.txt
 assets/images/TwinCAT Dynamic Collections.png
+
+# Personal
+.sandbox/
