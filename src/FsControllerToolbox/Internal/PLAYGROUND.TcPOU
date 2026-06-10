@@ -15,9 +15,9 @@ VAR
 								fMaximum := 100, 
 								fMinimum := 0);
 	fbADRC 					: FB_LADRC(
-								fWc      := 4.0E-4, // °C/s per % duty
-								fWo      := 0.005,
-								fb0      := 0.02,
+								fB0 	 := 4.0E-4,  // °C/s per % duty
+								fWc		 := 0.005,
+								fWo 	 := 0.02,
 								fMaximum := 100,
 								fMinimum := 0);
 	bInit      				: BOOL := TRUE;
@@ -25,6 +25,9 @@ END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[IF FsCommon.F_ResetOnTrue(bInit) THEN
+	fbPlantPID.AmbientTemperature  	:= 20;
+	fbPlantADRC.AmbientTemperature 	:= 20;	
+
 	fbPID.IntegratorBounds.Maximum 	:= 60.0;
     fbPID.IntegratorBounds.Minimum 	:= 0.0;
 	fbADRC.AutoTn 					:= FALSE;
