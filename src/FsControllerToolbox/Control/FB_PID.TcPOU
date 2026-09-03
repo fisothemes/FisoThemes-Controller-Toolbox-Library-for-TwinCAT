@@ -83,6 +83,18 @@ END_VAR
         </Implementation>
       </Set>
     </Property>
+    <Property Name="DerivativeTerm" Id="{7f442a43-ef1e-0a0b-1cd4-2ddd57d31604}">
+      <Declaration><![CDATA[(* Gets the contribution of the derivative term to the output. *)
+PROPERTY DerivativeTerm : LREAL]]></Declaration>
+      <Get Name="Get" Id="{52751071-104a-00eb-197b-f83ffbdb2025}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[DerivativeTerm := THIS^._fbD.Output;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
     <Property Name="Enable" Id="{56deecf4-f086-0adb-0226-89c67066e4ab}">
       <Declaration><![CDATA[(*
 Gets or sets whether the controller is active.
@@ -165,6 +177,18 @@ END_VAR
           <ST><![CDATA[THIS^._fFeedback := Feedback;]]></ST>
         </Implementation>
       </Set>
+    </Property>
+    <Property Name="IntegralTerm" Id="{74b6a0af-c77d-06a5-314b-6c8812e87304}">
+      <Declaration><![CDATA[(* Gets the contribution of the integral term to the output. *)
+PROPERTY IntegralTerm : LREAL]]></Declaration>
+      <Get Name="Get" Id="{124f5914-aabb-0657-030e-9f934c549a19}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[IntegralTerm := THIS^._fbI.Output;]]></ST>
+        </Implementation>
+      </Get>
     </Property>
     <Property Name="IntegratorBounds" Id="{955fa142-9ffe-0558-1c61-9fd5d1f375a1}">
       <Declaration><![CDATA[(*
@@ -295,6 +319,18 @@ END_VAR
           <ST><![CDATA[THIS^._eMode := Mode;]]></ST>
         </Implementation>
       </Set>
+    </Property>
+    <Property Name="ProportionalTerm" Id="{8fc76975-7252-0267-24b1-bd0f7ff0fe2e}">
+      <Declaration><![CDATA[(* Gets the contribution of the proportional term to the output. *)
+PROPERTY ProportionalTerm : LREAL]]></Declaration>
+      <Get Name="Get" Id="{9bf611dd-c587-0099-1cc8-b21e1ebbb330}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ProportionalTerm := THIS^._fbP.Output;]]></ST>
+        </Implementation>
+      </Get>
     </Property>
     <Method Name="Reset" Id="{1b65f8d9-dfb5-0fd9-3919-65e5146dc878}">
       <Declaration><![CDATA[(* Resets all internal components and sets the output to zero. *)
