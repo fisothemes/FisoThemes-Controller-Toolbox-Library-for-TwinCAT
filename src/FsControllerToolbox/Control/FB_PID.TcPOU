@@ -31,17 +31,19 @@ switching to :attr:`~E_PIDMode.Auto` produces no jump in output.
 FUNCTION_BLOCK FINAL FB_PID EXTENDS FB_SoComponent
 IMPLEMENTS FsCommon.I_Runnable, I_Resettable, I_Bounded
 VAR
-	_fSetpoint  : LREAL; // Setpoint (SP).
-	_fFeedback  : LREAL; // Process variable (PV).
-	_fError     : LREAL; // Current error (SP - PV).
-	_bEnable	: BOOL := TRUE;
-	_eMode      : E_ControllerMode := E_ControllerMode.Auto; // Operating mode. Auto or Manual.
-	_fbClamp    : FB_Clamp(
-					fMaximum := FsCommon.GVL_TypeValueLimits.LREAL_MAX, 
-					fMinimum := FsCommon.GVL_TypeValueLimits.LREAL_MIN); // Bounds of the controller's Output.
-	_fbP        : FB_ProportionalGain(fKp := 2.0); // P Component.
-	_fbI        : FB_ClampingIntegrator(tTn := LTIME#0S, eMode := E_AntiWindupMode.Hold); // I Component.
-	_fbD        : FB_Differentiator(tTv := LTIME#0S, tTd := LTIME#200MS); // D Components.
+	_fSetpoint   : LREAL; // Setpoint (SP).
+	_fFeedback   : LREAL; // Process variable (PV).
+	_fError      : LREAL; // Current error (SP - PV).
+	_bEnable	 : BOOL := TRUE;
+	_eMode       : E_ControllerMode := E_ControllerMode.Auto; // Operating mode. Auto or Manual.
+	_fbClamp     : FB_Clamp(
+						fMaximum := FsCommon.GVL_TypeValueLimits.LREAL_MAX, 
+						fMinimum := FsCommon.GVL_TypeValueLimits.LREAL_MIN); // Bounds of the controller's Output.
+	_fbP         : FB_ProportionalGain(fKp := 2.0); // P Component.
+	_fbI         : FB_ClampingIntegrator(tTn := LTIME#0S, eMode := E_AntiWindupMode.Hold); // I Component.
+	_fbD         : FB_Differentiator(tTv := LTIME#0S, tTd := LTIME#200MS); // D Components.
+	_bSyncOutput : BOOL;  // Pending output preset request.
+	_fSyncOutput : LREAL; // Target output for the pending preset.
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -377,6 +379,10 @@ IF THIS^._bEnable THEN
 	
 	CASE THIS^._eMode OF
 		E_ControllerMode.Auto:
+			IF FsCommon.F_ResetOnTrue(THIS^._bSyncOutput) THEN
+				THIS^._fbI.Sync(THIS^._fSyncOutput - THIS^._fbP.Output - THIS^._fbD.Output);
+			END_IF
+		
 			THIS^._fbI.Input           := THIS^._fbP.Output;
 			THIS^._fbI.ComparatorInput := THIS^._fbClamp.Residual;
 			THIS^._fbI.Run();
@@ -386,6 +392,8 @@ IF THIS^._bEnable THEN
 			THIS^._fOutput := THIS^._fbClamp.Output;
 	
 		E_ControllerMode.Manual:
+			THIS^._bSyncOutput := FALSE;
+			
 			THIS^._fbI.Sync(THIS^._fSetpoint - THIS^._fbP.Output - THIS^._fbD.Output);
 			THIS^._fbI.Input           := THIS^._fbP.Output;
 			THIS^._fbI.ComparatorInput := 0;
@@ -439,6 +447,30 @@ END_VAR
         </Implementation>
       </Set>
     </Property>
+    <Method Name="SyncOutput" Id="{8da3f1df-8e41-0ba3-3e1b-fc247df3673e}">
+      <Declaration><![CDATA[(*
+Sets the controller output to a given value on the next :meth:`Run` call.
+
+The integrator is back-calculated from the current P and D terms so the
+three terms add up to ``fValue``. Use it to start from a known operating
+point instead of from zero.
+
+.. note::
+   Does nothing if :attr:`Tn` is ``LTIME#0``, or in
+   :attr:`~E_ControllerMode.Manual` mode, where the output already follows
+   :attr:`Setpoint`. If :attr:`IntegratorBounds` cuts the integrator short,
+   the output stops below the target.
+*)
+METHOD SyncOutput
+VAR_INPUT
+	fValue : LREAL; // Target controller output.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._fSyncOutput := LIMIT(THIS^.Minimum, fValue, THIS^.Maximum);
+THIS^._bSyncOutput := TRUE;]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="SyncTn" Id="{664c2688-1e61-08aa-1c55-1787cffdfc4e}">
       <Declaration><![CDATA[(*
 Presets the integrator state to match a given output value on the next :meth:`Run` call.
