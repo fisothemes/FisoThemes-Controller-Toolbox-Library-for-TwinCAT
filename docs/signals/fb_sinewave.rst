@@ -19,23 +19,17 @@ where :math:`A` is :attr:`Amplitude`, :math:`T` is :attr:`Period` in seconds,
    Use ``FB_init`` to set :attr:`tPeriod`, :attr:`fAmplitude`, :attr:`fBias`,
    and :attr:`fPhase` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_SineWave EXTENDS FB_PeriodicSignal
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_tTime : LTIME;
-   END_VAR
+**Extends:** :ref:`FB_PeriodicSignal <fb_periodicsignal>`
 
 Methods
 -------
 
 .. _fb_sinewave.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -45,22 +39,22 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``tPeriod``
-     - ``LTIME;``
+     - ``LTIME``
      - Duration of one full cycle.
    * - ``fAmplitude``
-     - ``LREAL;``
+     - ``LREAL``
      - Scales the wave. Output swings between Bias ± Amplitude.
    * - ``fBias``
-     - ``LREAL;``
+     - ``LREAL``
      - Shifts the output vertically.
    * - ``fPhase``
-     - ``LREAL;``
+     - ``LREAL``
      - Phase offset in radians. Shifts the wave horizontally.
 
 

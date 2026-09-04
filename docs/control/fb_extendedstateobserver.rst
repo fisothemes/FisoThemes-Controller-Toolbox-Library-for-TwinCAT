@@ -19,18 +19,7 @@ tracks disturbances faster but amplifies sensor noise.
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`fWo` and :attr:`fB0` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_ExtendedStateObserver EXTENDS FB_SoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fWo      : LREAL; // Observer bandwidth in rad/s.
-   	_fB0      : LREAL; // Estimated plant gain.
-   	_fInputU  : LREAL; // Control signal from the previous cycle.
-   	_fInputY  : LREAL; // Measured process output (feedback).
-   	_fZ1      : LREAL; // Estimated process output.
-   	_fZ2      : LREAL; // Estimated total disturbance.
-   END_VAR
+**Extends:** :ref:`FB_SoComponent <fb_socomponent>`
 
 Properties
 ----------
@@ -113,10 +102,10 @@ Methods
 
 .. _fb_extendedstateobserver.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -126,16 +115,16 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fWo``
-     - ``LREAL;``
+     - ``LREAL``
      - Observer bandwidth in rad/s.
    * - ``fB0``
-     - ``LREAL;``
+     - ``LREAL``
      - Estimated plant gain.
 
 
@@ -158,5 +147,5 @@ Advances the observer by one time step.
    time is zero the method returns early without updating the state.
 
    Uses Forward Euler discretisation. For stability, ensure :attr:`Wo` satisfies
-   ``Wo * T < 1`` where ``T`` is the task cycle time in seconds. For a 10ms task,
+   ``Wo \* T < 1`` where ``T`` is the task cycle time in seconds. For a 10ms task,
    ``Wo`` should not exceed 100 rad/s.

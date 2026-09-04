@@ -26,23 +26,7 @@ switching to :attr:`~E_PIDMode.Auto` produces no jump in output.
    Use ``FB_init`` to set :attr:`fKp`, :attr:`tTn`, :attr:`tTv` and :attr:`tTd`,
    :attr:`fMaximum`, and :attr:`fMinimum` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_PID EXTENDS FB_SoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable, I_Bounded
-   VAR
-   	_fSetpoint  : LREAL; // Setpoint (SP).
-   	_fFeedback  : LREAL; // Process variable (PV).
-   	_fError     : LREAL; // Current error (SP - PV).
-   	_bEnable	: BOOL := TRUE;
-   	_eMode      : E_ControllerMode := E_ControllerMode.Auto; // Operating mode. Auto or Manual.
-   	_fbClamp    : FB_Clamp(
-   					fMaximum := FsCommon.GVL_TypeValueLimits.LREAL_MAX, 
-   					fMinimum := FsCommon.GVL_TypeValueLimits.LREAL_MIN); // Bounds of the controller's Output.
-   	_fbP        : FB_ProportionalGain(fKp := 2.0); // P Component.
-   	_fbI        : FB_ClampingIntegrator(tTn := LTIME#0S, eMode := E_AntiWindupMode.Hold); // I Component.
-   	_fbD        : FB_Differentiator(tTv := LTIME#0S, tTd := LTIME#200MS); // D Components.
-   END_VAR
+**Extends:** :ref:`FB_SoComponent <fb_socomponent>`
 
 Properties
 ----------
@@ -61,11 +45,20 @@ Gets whether the integrator is currently saturated and integration is halted or 
 AntiWindupMode
 ~~~~~~~~~~~~~~
 
-Type: ``E_AntiWindupMode``
+Type: :ref:`E_AntiWindupMode <e_antiwindupmode>`
 
 Gets or sets the anti-windup mode for the integrator.
 
 See :class:`E_AntiWindupMode` for available modes.
+
+.. _fb_pid.derivativeterm:
+
+DerivativeTerm
+~~~~~~~~~~~~~~
+
+Type: ``LREAL``
+
+Gets the contribution of the derivative term to the output.
 
 .. _fb_pid.enable:
 
@@ -99,12 +92,21 @@ Gets or sets the process variable (PV).
 
 Used to compute the error and the derivative on measurement.
 
+.. _fb_pid.integralterm:
+
+IntegralTerm
+~~~~~~~~~~~~
+
+Type: ``LREAL``
+
+Gets the contribution of the integral term to the output.
+
 .. _fb_pid.integratorbounds:
 
 IntegratorBounds
 ~~~~~~~~~~~~~~~~
 
-Type: ``I_Bounded``
+Type: :ref:`I_Bounded <i_bounded>`
 
 Gets the integrator bounds interface.
 
@@ -153,7 +155,7 @@ Set :attr:`Maximum` before this property to ensure the guard applies correctly.
 Mode
 ~~~~
 
-Type: ``E_ControllerMode``
+Type: :ref:`E_ControllerMode <e_controllermode>`
 
 Gets or sets the operating mode.
 
@@ -161,6 +163,15 @@ In :attr:`~E_PIDMode.Auto` mode the output is computed from :attr:`Setpoint` and
 :attr:`Feedback`. In :attr:`~E_ControllerMode.Manual` mode the output tracks
 :attr:`Setpoint` directly through the output clamp. The integrator is continuously
 primed in manual mode so switching to auto produces no jump in output.
+
+.. _fb_pid.proportionalterm:
+
+ProportionalTerm
+~~~~~~~~~~~~~~~~
+
+Type: ``LREAL``
+
+Gets the contribution of the proportional term to the output.
 
 .. _fb_pid.setpoint:
 
@@ -218,10 +229,10 @@ Methods
 
 .. _fb_pid.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -231,37 +242,30 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fKp``
-     - ``LREAL;``
+     - ``LREAL``
      - Proportional gain.
    * - ``tTn``
-     - ``LTIME;``
+     - ``LTIME``
      - Integral action time. LTIME#0 disables the I term.
    * - ``tTv``
-     - ``LTIME;``
+     - ``LTIME``
      - Rate time. LTIME#0 disables the D term.
    * - ``tTd``
-     - ``LTIME;``
+     - ``LTIME``
      - Derivative damping time.
    * - ``fMaximum``
-     - ``LREAL;``
+     - ``LREAL``
      - Upper output clamp.
    * - ``fMinimum``
-     - ``LREAL;``
+     - ``LREAL``
      - Lower output clamp.
 
-
-.. _fb_pid.reset:
-
-Reset
-~~~~~
-
-Resets all internal components and sets the output to zero.
 
 .. _fb_pid.run:
 
@@ -273,6 +277,37 @@ Advances the PID controller by one time step.
 .. note::
    Must be called once per cycle on a single PLC task.
 
+.. _fb_pid.syncoutput:
+
+SyncOutput
+~~~~~~~~~~
+
+Sets the controller output to a given value on the next :meth:`Run` call.
+
+The integrator is back-calculated from the current P and D terms so the
+three terms add up to ``fValue``. Use it to start from a known operating
+point instead of from zero.
+
+.. note::
+   Does nothing if :attr:`Tn` is ``LTIME#0``, or in
+   :attr:`~E_ControllerMode.Manual` mode, where the output already follows
+   :attr:`Setpoint`. If :attr:`IntegratorBounds` cuts the integrator short,
+   the output stops below the target.
+
+**Inputs**
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 20 55
+
+   * - Name
+     - Type
+     - Description
+   * - ``fValue``
+     - ``LREAL``
+     - Target controller output.
+
+
 .. _fb_pid.synctn:
 
 SyncTn
@@ -283,7 +318,7 @@ Presets the integrator state to match a given output value on the next :meth:`Ru
 Use this when switching from manual to automatic mode with a known starting output,
 or when initialising the controller to a steady-state value to avoid an initial transient.
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -293,6 +328,6 @@ or when initialising the controller to a steady-state value to avoid an initial 
      - Type
      - Description
    * - ``fValue``
-     - ``LREAL;``
+     - ``LREAL``
      - Target integrator state.
 

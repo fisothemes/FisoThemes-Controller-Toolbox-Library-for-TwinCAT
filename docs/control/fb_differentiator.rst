@@ -26,16 +26,7 @@ derivative. This is not recommended in practice due to noise sensitivity.
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`tTv` and :attr:`tTd` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_Differentiator EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_tTv          : LTIME; // Rate time (Tv). Determines derivative action strength.
-   	_tTd          : LTIME; // Damping time (Td). Filters the derivative signal to reduce noise sensitivity.
-   	_fPrevInput   : LREAL; // Input from the previous cycle.
-   	_fFilterState : LREAL; // Internal state of the damping filter.
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -72,10 +63,10 @@ Methods
 
 .. _fb_differentiator.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -85,16 +76,16 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``tTv``
-     - ``LTIME;``
+     - ``LTIME``
      - Rate time. T#0S disables the derivative term entirely.
    * - ``tTd``
-     - ``LTIME;``
+     - ``LTIME``
      - Damping time. LTIME#0 means no filtering (pure derivative).
 
 

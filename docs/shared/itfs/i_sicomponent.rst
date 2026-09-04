@@ -8,10 +8,6 @@ Interface for single-input controller toolbox components.
 Implementors expose a write-only :attr:`Input` property. For components that
 also produce an output signal, use ``I_SisoComponent`` instead.
 
-.. code-block:: none
-
-   INTERFACE I_SiComponent
-
 Properties
 ----------
 
@@ -21,3 +17,5 @@ Input
 ~~~~~
 
 Type: ``LREAL``
+
+Gets or sets the input to the component.

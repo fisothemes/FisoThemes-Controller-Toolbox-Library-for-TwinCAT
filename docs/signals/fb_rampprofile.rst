@@ -23,16 +23,7 @@ Calling :meth:`Reset` returns the output to :attr:`StartValue` and clears
    Use ``FB_init`` to set :attr:`fStartValue`, :attr:`fTarget`, and :attr:`tDuration`
    at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_RampProfile EXTENDS FB_SoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fStartValue : LREAL; // Initial output value. Restored on Reset.
-   	_fTarget     : LREAL; // Target value to ramp toward.
-   	_tDuration   : LTIME; // Time to reach the target from StartValue.
-   	_bIsComplete : BOOL;  // TRUE when the output has reached the target.
-   END_VAR
+**Extends:** :ref:`FB_SoComponent <fb_socomponent>`
 
 Properties
 ----------
@@ -90,10 +81,10 @@ Methods
 
 .. _fb_rampprofile.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -103,19 +94,19 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fStartValue``
-     - ``LREAL;``
+     - ``LREAL``
      - Initial output value.
    * - ``fTarget``
-     - ``LREAL;``
+     - ``LREAL``
      - Target value to ramp toward.
    * - ``tDuration``
-     - ``LTIME;``
+     - ``LTIME``
      - Time to reach the target from StartValue. LTIME#0 snaps immediately.
 
 

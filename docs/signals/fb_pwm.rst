@@ -25,15 +25,7 @@ in the opposite direction.
    Use ``FB_init`` to set :attr:`tPeriod`, :attr:`fAmplitude`, :attr:`fBias`,
    and :attr:`fDutyCycle` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_PWM EXTENDS FB_PeriodicSignal
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fDutyCycle : LREAL; // Proportion of the period the output is high. Clamped to -1..1. Negative values invert the wave.
-   	_bIsHigh    : BOOL;  // TRUE when the output is in its high state, regardless of amplitude, bias, or phase.
-   	_tTime      : LTIME;
-   END_VAR
+**Extends:** :ref:`FB_PeriodicSignal <fb_periodicsignal>`
 
 Properties
 ----------
@@ -68,10 +60,10 @@ Methods
 
 .. _fb_pwm.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -81,22 +73,22 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``tPeriod``
-     - ``LTIME;``
+     - ``LTIME``
      - Duration of one full cycle.
    * - ``fAmplitude``
-     - ``LREAL;``
+     - ``LREAL``
      - High-state output level. Low state is always 0.
    * - ``fBias``
-     - ``LREAL;``
+     - ``LREAL``
      - Shifts the output vertically.
    * - ``fDutyCycle``
-     - ``LREAL;``
+     - ``LREAL``
      - Proportion of the period the output is high. Clamped to -1..1.
 
 

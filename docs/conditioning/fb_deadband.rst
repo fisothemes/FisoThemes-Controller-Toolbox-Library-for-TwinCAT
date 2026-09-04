@@ -14,16 +14,7 @@ the band the input passes through unchanged.
    Use ``FB_init`` to set :attr:`fMinimum`, :attr:`fMaximum`, and :attr:`eMode`
    at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_Deadband EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fMinimum  : LREAL; // Lower bound of the deadband. Clamped to <= Maximum.
-   	_fMaximum  : LREAL; // Upper bound of the deadband. Clamped to >= Minimum.
-   	_eMode     : E_DeadbandMode; // Output behaviour when input is within the band.
-   	_bIsActive : BOOL; // TRUE when input is within deadband [Minimum..:=Maximum].
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -68,7 +59,7 @@ Set :attr:`Maximum` before this property to ensure the guard applies correctly.
 Mode
 ~~~~
 
-Type: ``E_DeadbandMode``
+Type: :ref:`E_DeadbandMode <e_deadbandmode>`
 
 Gets or sets the output behaviour when the input is within the band.
 
@@ -82,10 +73,10 @@ Methods
 
 .. _fb_deadband.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -95,19 +86,19 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fMaximum``
-     - ``LREAL;``
+     - ``LREAL``
      - Upper bound of the deadband.
    * - ``fMinimum``
-     - ``LREAL;``
+     - ``LREAL``
      - Lower bound of the deadband.
    * - ``eMode``
-     - ``E_DeadbandMode;``
+     - :ref:`E_DeadbandMode <e_deadbandmode>`
      - Output behaviour when the input is within the band.
 
 

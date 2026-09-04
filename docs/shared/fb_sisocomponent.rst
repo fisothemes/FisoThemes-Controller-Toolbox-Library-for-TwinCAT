@@ -9,15 +9,6 @@ for single-input single-output controller toolbox components.
 .. NOTE::
    Direct calls to this function block are not permitted (``no_explicit_call``).
 
-.. code-block:: none
-
-   FUNCTION_BLOCK ABSTRACT FB_SisoComponent
-   IMPLEMENTS I_SisoComponent, I_SiComponent, I_SoComponent
-   VAR
-   	_fInput 	: LREAL;
-   	_fOutput 	: LREAL;
-   END_VAR
-
 Properties
 ----------
 

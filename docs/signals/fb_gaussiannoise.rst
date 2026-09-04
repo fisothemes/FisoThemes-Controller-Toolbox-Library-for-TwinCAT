@@ -13,15 +13,7 @@ real sensor noise more accurately than uniform white noise.
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`fMean` and :attr:`fStdDev` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_GaussianNoise EXTENDS FB_SoComponent
-   IMPLEMENTS FsCommon.I_Runnable
-   VAR
-   	_fMean   : LREAL; // Mean (centre) of the distribution.
-   	_fStdDev : LREAL; // Standard deviation. Controls the spread of the noise.
-   	_fbRng   : FsCommon.FB_RandomNumberGenerator(0); // Internal random number generator.
-   END_VAR
+**Extends:** :ref:`FB_SoComponent <fb_socomponent>`
 
 Properties
 ----------
@@ -56,10 +48,10 @@ Methods
 
 .. _fb_gaussiannoise.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -69,16 +61,16 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fMean``
-     - ``LREAL;``
+     - ``LREAL``
      - Mean of the distribution.
    * - ``fStdDev``
-     - ``LREAL;``
+     - ``LREAL``
      - Standard deviation. A larger value produces more spread-out noise.
 
 

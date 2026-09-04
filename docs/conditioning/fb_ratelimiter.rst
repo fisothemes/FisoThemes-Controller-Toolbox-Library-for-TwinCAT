@@ -17,14 +17,7 @@ Calling :meth:`Reset` snaps the output to the current input immediately.
    Use ``FB_init`` to set :attr:`fRisingLimit` and :attr:`fFallingLimit` at
    declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_RateLimiter EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fRisingLimit  : LREAL; // Maximum rate of increase in units per second. Zero means no limit.
-   	_fFallingLimit : LREAL; // Maximum rate of decrease in units per second. Zero means no limit.
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -60,10 +53,10 @@ Methods
 
 .. _fb_ratelimiter.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -73,16 +66,16 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fRisingLimit``
-     - ``LREAL;``
+     - ``LREAL``
      - Maximum rate of increase in units per second. Zero means no limit.
    * - ``fFallingLimit``
-     - ``LREAL;``
+     - ``LREAL``
      - Maximum rate of decrease in units per second. Zero means no limit.
 
 

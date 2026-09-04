@@ -18,14 +18,7 @@ further into saturation. The suppression behaviour is controlled by :attr:`Mode`
 
    Use ``FB_init`` to set :attr:`tTn` and :attr:`eMode` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_ClampingIntegrator EXTENDS FB_Integrator
-   VAR
-   	_fComparatorInput  : LREAL;
-   	_bAntiWindupActive : BOOL; // TRUE when the output is saturated and integration is halted.
-   	_eMode			   : E_AntiWindupMode; // The integrator behaviour during saturation.
-   END_VAR
+**Extends:** :ref:`FB_Integrator <fb_integrator>`
 
 Properties
 ----------
@@ -59,7 +52,7 @@ suppressed according to :attr:`Mode`.
 Mode
 ~~~~
 
-Type: ``E_AntiWindupMode``
+Type: :ref:`E_AntiWindupMode <e_antiwindupmode>`
 
 Gets or sets the anti-windup mode.
 
@@ -71,10 +64,10 @@ Methods
 
 .. _fb_clampingintegrator.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -84,16 +77,16 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``tTn``
-     - ``LTIME;``
+     - ``LTIME``
      - Integral action time. LTIME#0 disables integration.
    * - ``eMode``
-     - ``E_AntiWindupMode;``
+     - :ref:`E_AntiWindupMode <e_antiwindupmode>`
      - The integrator behaviour during saturation.
 
 

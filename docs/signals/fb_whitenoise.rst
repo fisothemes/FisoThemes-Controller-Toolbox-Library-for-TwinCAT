@@ -13,14 +13,7 @@ and disturbances.
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`Amplitude` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_WhiteNoise EXTENDS FB_SoComponent
-   IMPLEMENTS FsCommon.I_Runnable
-   VAR
-   	_fAmplitude : LREAL; // Maximum absolute output value.
-   	_fbRng      : FsCommon.FB_RandomNumberGenerator(0); // Internal random number generator.
-   END_VAR
+**Extends:** :ref:`FB_SoComponent <fb_socomponent>`
 
 Properties
 ----------
@@ -42,10 +35,10 @@ Methods
 
 .. _fb_whitenoise.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -55,13 +48,13 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fAmplitude``
-     - ``LREAL;``
+     - ``LREAL``
      - Maximum absolute output value.
 
 

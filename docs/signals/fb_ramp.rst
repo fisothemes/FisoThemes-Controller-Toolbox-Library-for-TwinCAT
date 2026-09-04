@@ -15,14 +15,7 @@ Calling :meth:`Reset` returns the output to :attr:`StartValue`.
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`fStartValue` and :attr:`fRate` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_Ramp EXTENDS FB_SoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fStartValue : LREAL; // Initial output value. Restored on Reset.
-   	_fRate       : LREAL; // Rate of change in units per second. Negative values produce a falling ramp.
-   END_VAR
+**Extends:** :ref:`FB_SoComponent <fb_socomponent>`
 
 Properties
 ----------
@@ -55,10 +48,10 @@ Methods
 
 .. _fb_ramp.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -68,16 +61,16 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fStartValue``
-     - ``LREAL;``
+     - ``LREAL``
      - Initial output value.
    * - ``fRate``
-     - ``LREAL;``
+     - ``LREAL``
      - Rate of change in units per second. Negative values produce a falling ramp.
 
 

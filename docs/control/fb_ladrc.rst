@@ -17,7 +17,7 @@ Tuning procedure:
    that should settle in 10 seconds, start with ``Wc = 0.5`` rad/s.
 3. Set :attr:`Wo` to 3–5 times :attr:`Wc` and increase if disturbance rejection
    is too slow.
-4. By default :attr:`AutoTn` is ``TRUE`` and the integral action time is derived
+4. By default :attr:`AutoTn` is ``FALSE``, when it is ``TRUE``, the integral action time is derived
    automatically as :math:`T_n = 1 / \omega_c^2`. Set :attr:`AutoTn` to ``FALSE``
    and tune :attr:`Tn` manually if the automatic value causes overshoot or instability.
    ``LTIME#0`` disables integral action entirely.
@@ -31,31 +31,13 @@ in output.
    Set :attr:`Maximum` before :attr:`Minimum` to ensure the clamp guard applies
    correctly. The same applies to :attr:`IntegratorBounds`.
 
-   Uses Forward Euler discretisation. For stability ensure ``Wo * T < 1`` where
+   Uses Forward Euler discretisation. For stability ensure ``Wo \* T < 1`` where
    ``T`` is the task cycle time in seconds.
 
    Use ``FB_init`` to set :attr:`fWc`, :attr:`fWo`, :attr:`fB0`, :attr:`fMinimum`,
    and :attr:`fMaximum` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_LADRC EXTENDS FB_SoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable, I_Bounded
-   VAR
-   	_fSetpoint  : LREAL; // Setpoint (SP).
-   	_fFeedback  : LREAL; // Process variable (PV).
-   	_bEnable    : BOOL := TRUE; // When FALSE all components are reset and output is held at zero.
-   	_bAutoTn    : BOOL := TRUE; // When TRUE Tn is derived automatically as 1/Wc².
-   	_tTn        : LTIME := LTIME#1S; // Integral action time. Used when AutoTn is FALSE.
-   	_eMode      : E_ControllerMode := E_ControllerMode.Auto;
-   	_fB0        : LREAL; // Backing variable for the ESO and LSEF's b0.
-   	_fbESO      : FB_ExtendedStateObserver(fWo := 0, fB0 := 0);
-   	_fbI        : FB_ClampingIntegrator(tTn := LTIME#0S, eMode := E_AntiWindupMode.Hold);
-   	_fbLSEF     : FB_LinearStateErrorFeedback(fWc := 0, fB0 := 0);
-   	_fbClamp    : FB_Clamp(
-   					fMaximum := FsCommon.GVL_TypeValueLimits.LREAL_MAX,
-   					fMinimum := FsCommon.GVL_TypeValueLimits.LREAL_MIN);
-   END_VAR
+**Extends:** :ref:`FB_SoComponent <fb_socomponent>`
 
 Properties
 ----------
@@ -117,7 +99,7 @@ Used by the observer to estimate the process state and total disturbance.
 IntegratorBounds
 ~~~~~~~~~~~~~~~~
 
-Type: ``I_Bounded``
+Type: :ref:`I_Bounded <i_bounded>`
 
 Gets the integrator bounds interface.
 
@@ -154,7 +136,7 @@ Set :attr:`Maximum` before this property to ensure the guard applies correctly.
 Mode
 ~~~~
 
-Type: ``E_ControllerMode``
+Type: :ref:`E_ControllerMode <e_controllermode>`
 
 Gets or sets the operating mode.
 
@@ -180,7 +162,7 @@ the manual output value, routed directly through the output clamp.
 Tn
 ~~
 
-Type: ``LTIME;``
+Type: ``LTIME``
 
 Gets or sets the integral action time (Tn).
 
@@ -211,7 +193,7 @@ Type: ``LREAL``
 Gets or sets the observer bandwidth in rad/s.
 
 Controls how quickly disturbances are estimated and rejected. Set to 3–5 times
-:attr:`Wc`. For stability ensure ``Wo * T < 1`` where ``T`` is the task cycle
+:attr:`Wc`. For stability ensure ``Wo \* T < 1`` where ``T`` is the task cycle
 time in seconds. For a 10ms task, keep ``Wo`` below 100 rad/s.
 
 Methods
@@ -219,10 +201,10 @@ Methods
 
 .. _fb_ladrc.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -232,34 +214,27 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fB0``
-     - ``LREAL;``
+     - ``LREAL``
      - Estimated plant gain.
    * - ``fWc``
-     - ``LREAL;``
+     - ``LREAL``
      - Controller bandwidth in rad/s.
    * - ``fWo``
-     - ``LREAL;``
+     - ``LREAL``
      - Observer bandwidth in rad/s. Typically 3–5 times Wc.
    * - ``fMaximum``
-     - ``LREAL;``
+     - ``LREAL``
      - Upper output clamp.
    * - ``fMinimum``
-     - ``LREAL;``
+     - ``LREAL``
      - Lower output clamp.
 
-
-.. _fb_ladrc.reset:
-
-Reset
-~~~~~
-
-Resets all internal components and sets the output to zero.
 
 .. _fb_ladrc.run:
 

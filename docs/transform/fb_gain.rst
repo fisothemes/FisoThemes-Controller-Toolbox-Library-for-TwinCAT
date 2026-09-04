@@ -8,13 +8,7 @@ Scales the input signal by a fixed gain.
 A value greater than 1 amplifies the signal. A value between 0 and 1 attenuates
 it. A negative value inverts and scales. A value of 0 holds the output at zero.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_Gain EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable
-   VAR
-   	_fGain : LREAL; // Factor the input is scaled by.
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -37,10 +31,10 @@ Methods
 
 .. _fb_gain.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -50,13 +44,13 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fGain``
-     - ``LREAL;``
+     - ``LREAL``
      - Factor the input is scaled by.
 
 

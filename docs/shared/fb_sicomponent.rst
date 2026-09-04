@@ -13,14 +13,6 @@ by the caller.
    Direct calls to this function block are not permitted (``no_explicit_call``).
    Extend it and call the derived block instead.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK ABSTRACT FB_SiComponent
-   IMPLEMENTS I_SiComponent
-   VAR
-       _fInput : LREAL;
-   END_VAR
-
 Properties
 ----------
 

@@ -17,13 +17,7 @@ where :math:`K_p` is :attr:`Kp` and :math:`e` is the error signal set via :attr:
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`fKp` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_ProportionalGain EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fKp : LREAL; // Proportional gain.
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -46,10 +40,10 @@ Methods
 
 .. _fb_proportionalgain.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -59,13 +53,13 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fKp``
-     - ``LREAL;``
+     - ``LREAL``
      - Proportional gain.
 
 

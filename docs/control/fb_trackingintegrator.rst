@@ -26,13 +26,7 @@ A typical wiring pattern:
 
    Use ``FB_init`` to set :attr:`tTn` and :attr:`tTt` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_TrackingIntegrator EXTENDS FB_Integrator
-   VAR
-   	_fComparatorInput  : LREAL; // External residual signal for back-calculation anti-windup.
-   	_tTt 			   : LTIME; // Tracking time constant (Tt). Controls how quickly the integrator unwinds.
-   END_VAR
+**Extends:** :ref:`FB_Integrator <fb_integrator>`
 
 Properties
 ----------
@@ -64,7 +58,7 @@ Type: ``LTIME``
 Gets or sets the tracking time constant (Tt).
 
 Controls how quickly the integrator unwinds after saturation. A typical
-starting value is ``SQRT(Tn * Td)``. Setting it to ``LTIME#0`` disables
+starting value is ``SQRT(Tn \* Td)``. Setting it to ``LTIME#0`` disables
 the back-calculation correction entirely.
 
 Methods
@@ -72,10 +66,10 @@ Methods
 
 .. _fb_trackingintegrator.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -85,17 +79,17 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``tTn``
-     - ``LTIME;``
+     - ``LTIME``
      - Integral action time. LTIME#0 disables integration.
    * - ``tTt``
-     - ``LTIME;``
-     - Tracking time constant (Tt). A typical starting value is SQRT(Tn * Td).
+     - ``LTIME``
+     - Tracking time constant (Tt). A typical starting value is SQRT(Tn \* Td).
 
 
 .. _fb_trackingintegrator.run:

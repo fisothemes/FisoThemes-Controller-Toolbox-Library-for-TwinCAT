@@ -2,7 +2,7 @@ Shared
 ======
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    fb_sicomponent
    fb_sisocomponent

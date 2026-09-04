@@ -19,19 +19,7 @@ where :math:`K` is :attr:`Gain`, :math:`\omega_n` is :attr:`Wn`, and
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`fGain`, :attr:`fWn`, and :attr:`fZeta` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_SecondOrderPlant EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fGain 	: LREAL; // Steady-state gain (K). Ratio of output to input once the plant has fully settled.
-   	_fWn 	: LREAL; // Natural frequency, rad/s), sets how fast the plant responds.
-   	_fZeta	: LREAL; // Damping ratio. Less than 1 gives overshoot, 1 is critically damped, greater than 1 is overdamped.
-   	_fY1    : LREAL; // y[k-1]
-       _fY2    : LREAL; // y[k-2]
-       _fU1    : LREAL; // u[k-1]
-       _fU2    : LREAL; // u[k-2]
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -80,10 +68,10 @@ Methods
 
 .. _fb_secondorderplant.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -93,28 +81,21 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fGain``
-     - ``LREAL;``
+     - ``LREAL``
      - Steady-state gain (K). Ratio of output to input once the plant has fully settled.
    * - ``fWn``
-     - ``LREAL;``
+     - ``LREAL``
      - Natural frequency in rad/s. Controls how fast the plant responds.
    * - ``fZeta``
-     - ``LREAL;``
+     - ``LREAL``
      - Damping ratio. Less than 1 gives overshoot, 1 is critically damped, greater than 1 is overdamped.
 
-
-.. _fb_secondorderplant.reset:
-
-Reset
-~~~~~
-
-Sets the output and all internal state to zero, returning the plant to its initial conditions.
 
 .. _fb_secondorderplant.run:
 

@@ -24,14 +24,7 @@ where :math:`K` is :attr:`Gain`, :math:`\tau` is :attr:`Tau` in seconds, and
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`fGain` and :attr:`fTau` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_FirstOrderPlant EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fGain 	: LREAL; // Steady-state gain (K). Ratio of output to input once the plant has fully settled.
-   	_tTau 	: LTIME; // Time constant (τ). Time for the step response to reach 63.2% of its final value.
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -67,10 +60,10 @@ Methods
 
 .. _fb_firstorderplant.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -80,16 +73,16 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fGain``
-     - ``LREAL;``
+     - ``LREAL``
      - Steady-state gain (K). Ratio of output to input once the plant has fully settled.
    * - ``tTau``
-     - ``LTIME;``
+     - ``LTIME``
      - Time constant (τ). Time for the step response to reach 63.2% of its final value.
 
 

@@ -16,16 +16,7 @@ If :attr:`InputMin` equals :attr:`InputMax` the output is set to :attr:`OutputMi
    Use ``FB_init`` to set :attr:`fInputMax`, :attr:`fInputMin`, :attr:`fOutputMin`,
    :attr:`fOutputMax` and :attr:`fOutputMin` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_LinearScaler EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable
-   VAR
-   	_fInputMax  : LREAL; // Upper bound of the input range.
-   	_fInputMin  : LREAL; // Lower bound of the input range.
-   	_fOutputMax : LREAL; // Upper bound of the output range.
-   	_fOutputMin : LREAL; // Lower bound of the output range.
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -71,10 +62,10 @@ Methods
 
 .. _fb_linearscaler.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -84,22 +75,22 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fInputMax``
-     - ``LREAL;``
+     - ``LREAL``
      - Upper bound of the input range.
    * - ``fInputMin``
-     - ``LREAL;``
+     - ``LREAL``
      - Lower bound of the input range.
    * - ``fOutputMax``
-     - ``LREAL;``
+     - ``LREAL``
      - Upper bound of the output range.
    * - ``fOutputMin``
-     - ``LREAL;``
+     - ``LREAL``
      - Lower bound of the output range.
 
 

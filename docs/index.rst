@@ -4,7 +4,7 @@ FsControllerToolbox
 A library of composable building blocks for modelling and building control systems in TwinCAT.
 
 :Company: FisoThemes
-:Version: 0.3.0
+:Version: 0.4.0
 
 .. toctree::
    :maxdepth: 2

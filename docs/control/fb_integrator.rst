@@ -18,17 +18,7 @@ switching from manual to automatic mode.
 
    Use ``FB_init`` to set :attr:`tTn` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FB_Integrator EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable, I_Bounded
-   VAR
-   	_tTn   		: LTIME; // Integral action time (Tn).
-   	_bSync 		: BOOL;  // Triggers a bumpless transfer on the next Run call.
-   	_fSync 		: LREAL; // Target integrator state for bumpless transfer.
-   	_fMaximum   : LREAL := FsCommon.GVL_TypeValueLimits.LREAL_MAX; // Upper output clamp. Clamped to >= Minimum.
-   	_fMinimum   : LREAL := FsCommon.GVL_TypeValueLimits.LREAL_MIN; // Lower output clamp. Clamped to <= Maximum.
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -75,10 +65,10 @@ Methods
 
 .. _fb_integrator.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -88,13 +78,13 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``tTn``
-     - ``LTIME;``
+     - ``LTIME``
      - Integral action time. LTIME#0 disables integration.
 
 
@@ -126,7 +116,7 @@ Forces the integrator state to a given value on the next :meth:`Run` call.
 Use this for bumpless transfer when switching from manual to automatic mode,
 to prevent a sudden jump in output.
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1

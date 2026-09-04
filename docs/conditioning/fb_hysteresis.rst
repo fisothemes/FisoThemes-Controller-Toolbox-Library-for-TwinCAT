@@ -18,15 +18,7 @@ exceeds the upper threshold.
    Use ``FB_init`` to set :attr:`fUpperThreshold` and :attr:`fLowerThreshold`
    at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_Hysteresis EXTENDS FB_SiComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fUpperThreshold : LREAL; // Input level above which the output switches low.
-   	_fLowerThreshold : LREAL; // Input level below which the output switches high.
-   	_bOutput         : BOOL;  // Current output state.
-   END_VAR
+**Extends:** :ref:`FB_SiComponent <fb_sicomponent>`
 
 Properties
 ----------
@@ -72,10 +64,10 @@ Methods
 
 .. _fb_hysteresis.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -85,16 +77,16 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fUpperThreshold``
-     - ``LREAL;``
+     - ``LREAL``
      - Input level above which the output switches low.
    * - ``fLowerThreshold``
-     - ``LREAL;``
+     - ``LREAL``
      - Input level below which the output switches high.
 
 

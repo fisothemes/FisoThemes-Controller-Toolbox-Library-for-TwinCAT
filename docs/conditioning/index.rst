@@ -2,7 +2,7 @@ Conditioning
 ============
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    fb_clamp
    fb_deadband

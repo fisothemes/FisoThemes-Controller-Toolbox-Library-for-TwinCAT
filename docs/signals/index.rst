@@ -2,7 +2,7 @@ Signals
 =======
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    fb_gaussiannoise
    fb_periodicsignal

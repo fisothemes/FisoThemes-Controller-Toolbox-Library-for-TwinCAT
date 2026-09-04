@@ -8,9 +8,7 @@ Interface for single-input single-output controller toolbox components.
 Implementors expose a writable :attr:`Input` and a read-only :attr:`Output`,
 both as ``LREAL``.
 
-.. code-block:: none
-
-   INTERFACE I_SisoComponent EXTENDS I_Component
+**Extends:** :ref:`I_Component <i_component>`
 
 Properties
 ----------
@@ -22,9 +20,13 @@ Input
 
 Type: ``LREAL``
 
+Gets or sets the input to the component.
+
 .. _i_sisocomponent.output:
 
 Output
 ~~~~~~
 
 Type: ``LREAL``
+
+Gets the output produced by the component.

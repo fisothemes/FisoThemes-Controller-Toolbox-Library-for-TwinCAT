@@ -2,7 +2,7 @@ Transform
 =========
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    fb_bias
    fb_gain

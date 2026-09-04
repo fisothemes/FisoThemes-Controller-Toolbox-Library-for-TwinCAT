@@ -24,17 +24,7 @@ A delay of ``LTIME#0`` passes the input through unchanged.
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`tDelayTime` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_PadeDelay EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_tDelayTime : LTIME; // Approximate transport delay (L).
-   	_fY1        : LREAL; // y[k-1]
-   	_fY2        : LREAL; // y[k-2]
-   	_fU1        : LREAL; // u[k-1]
-   	_fU2        : LREAL; // u[k-2]
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -61,10 +51,10 @@ Methods
 
 .. _fb_padedelay.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -74,22 +64,15 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``tDelayTime``
-     - ``LTIME;``
+     - ``LTIME``
      - Approximate transport delay.
 
-
-.. _fb_padedelay.reset:
-
-Reset
-~~~~~
-
-Clears all internal state, returning the delay approximation to its initial conditions.
 
 .. _fb_padedelay.run:
 

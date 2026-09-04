@@ -8,9 +8,7 @@ Exposes configurable upper and lower bounds for blocks with clamped output.
 Implemented by blocks such as :class:`FB_ClampingIntegrator` and :class:`FB_Clamp`
 to allow external configuration of their output limits.
 
-.. code-block:: none
-
-   INTERFACE I_Bounded EXTENDS I_Component
+**Extends:** :ref:`I_Component <i_component>`
 
 Properties
 ----------

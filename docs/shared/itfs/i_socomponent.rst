@@ -8,9 +8,7 @@ Interface for single-output controller toolbox components.
 Implementors expose a read-only :attr:`Output` property. For components that
 also accept an input signal, use ``I_SisoComponent`` instead.
 
-.. code-block:: none
-
-   INTERFACE I_SoComponent EXTENDS I_Component
+**Extends:** :ref:`I_Component <i_component>`
 
 Properties
 ----------
@@ -21,3 +19,5 @@ Output
 ~~~~~~
 
 Type: ``LREAL``
+
+Gets the output produced by the component.

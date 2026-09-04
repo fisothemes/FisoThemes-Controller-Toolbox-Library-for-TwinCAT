@@ -13,16 +13,7 @@ implement :meth:`Run` and :meth:`Reset` to produce their specific waveform.
    Direct calls to this function block are not permitted (``no_explicit_call``).
    Extend it and call the derived block instead.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK ABSTRACT FB_PeriodicSignal EXTENDS FB_SoComponent
-   IMPLEMENTS I_PeriodicSignal
-   VAR
-   	_tPeriod    : LTIME; // Duration of one full cycle. Must be greater than zero.
-   	_fAmplitude : LREAL; // Scales the raw wave. Output swings between Bias ± Amplitude.
-   	_fBias      : LREAL; // Shifts the output vertically.
-   	_fPhase     : LREAL; // Phase offset in radians. Shifts the wave horizontally.
-   END_VAR
+**Extends:** :ref:`FB_SoComponent <fb_socomponent>`
 
 Properties
 ----------

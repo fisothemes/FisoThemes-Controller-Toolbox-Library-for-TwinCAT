@@ -24,18 +24,7 @@ If :attr:`B0` is zero the output is held at zero.
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`fWc` and :attr:`fB0` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_LinearStateErrorFeedback EXTENDS FB_SoComponent
-   IMPLEMENTS FsCommon.I_Runnable, I_Resettable
-   VAR
-   	_fWc       : LREAL; // Controller bandwidth in rad/s.
-   	_fB0       : LREAL; // Estimated plant gain.
-   	_fSetpoint : LREAL; // Desired process output (SP).
-   	_fZ1       : LREAL; // Estimated process output from the observer.
-   	_fZ2       : LREAL; // Estimated total disturbance from the observer.
-   	_fIntegral : LREAL; // Integral correction from the external integrator.
-   END_VAR
+**Extends:** :ref:`FB_SoComponent <fb_socomponent>`
 
 Properties
 ----------
@@ -115,10 +104,10 @@ Methods
 
 .. _fb_linearstateerrorfeedback.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -128,16 +117,16 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fWc``
-     - ``LREAL;``
+     - ``LREAL``
      - Controller bandwidth in rad/s.
    * - ``fB0``
-     - ``LREAL;``
+     - ``LREAL``
      - Estimated plant gain.
 
 

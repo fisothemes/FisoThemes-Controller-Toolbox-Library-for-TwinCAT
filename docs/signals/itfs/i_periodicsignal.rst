@@ -8,9 +8,7 @@ Base interface for periodic signal generators.
 Implementors produce a cyclic output defined by :attr:`Period`, :attr:`Amplitude`,
 :attr:`Bias`, and :attr:`Phase`.
 
-.. code-block:: none
-
-   INTERFACE I_PeriodicSignal EXTENDS I_SoComponent
+**Extends:** :ref:`I_SoComponent <i_socomponent>`
 
 Properties
 ----------

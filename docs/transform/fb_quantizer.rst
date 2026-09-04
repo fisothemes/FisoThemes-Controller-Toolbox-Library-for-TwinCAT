@@ -14,13 +14,7 @@ A :attr:`StepSize` of zero passes the input through unchanged.
    The block is ``FINAL`` and must be instantiated, not extended.
    Use ``FB_init`` to set :attr:`fStepSize` at declaration time.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_Quantizer EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable
-   VAR
-   	_fStepSize : LREAL; // Quantisation step size. Zero passes the input through unchanged.
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -43,10 +37,10 @@ Methods
 
 .. _fb_quantizer.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -56,13 +50,13 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fStepSize``
-     - ``LREAL;``
+     - ``LREAL``
      - Quantisation step size. Zero passes the input through unchanged.
 
 

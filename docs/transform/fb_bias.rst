@@ -7,13 +7,7 @@ Adds a fixed offset to the input signal.
 
 A positive value shifts the output up; a negative value shifts it down.
 
-.. code-block:: none
-
-   FUNCTION_BLOCK FINAL FB_Bias EXTENDS FB_SisoComponent
-   IMPLEMENTS FsCommon.I_Runnable
-   VAR
-   	_fBias : LREAL; // Fixed offset added to the input.
-   END_VAR
+**Extends:** :ref:`FB_SisoComponent <fb_sisocomponent>`
 
 Properties
 ----------
@@ -32,10 +26,10 @@ Methods
 
 .. _fb_bias.fb_init:
 
-Initialisation
-~~~~~~~~~~~~~~
+FB_init
+~~~~~~~
 
-**Parameters**
+**Inputs**
 
 .. list-table::
    :header-rows: 1
@@ -45,13 +39,13 @@ Initialisation
      - Type
      - Description
    * - ``bInitRetains``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the retain variables are initialized (warm start / cold start)
    * - ``bInCopyCode``
-     - ``BOOL;``
+     - ``BOOL``
      - if TRUE, the instance afterwards gets moved into the copy code (online change)
    * - ``fBias``
-     - ``LREAL;``
+     - ``LREAL``
      - Fixed offset added to the input.
 
 
