@@ -3,10 +3,12 @@
   <POU Name="PLAYGROUND" Id="{d78796e8-f8c4-458f-9526-8acd467209b8}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM INTERNAL PLAYGROUND
 VAR
+	bSyncOutput 			: BOOL;
+	fSyncValue				: LREAL;
 	fSetpoint 				: LREAL;
 	fOutputPID, fOutputADRC : LREAL;
 	fDutyPID, fDutyADRC		: LREAL;   
-	fbPlantPID, fbPlantADRC : FB_ThermalPlant;
+	fbPlantPID, fbPlantADRC : FB_FirstOrderPlant(fGain := 1.0, tTau := LTIME#5S);
 	fbPID	  				: FB_PID(
 								fKp := 4.0,
 								tTn := LTIME#12M,
@@ -25,13 +27,17 @@ END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[IF FsCommon.F_ResetOnTrue(bInit) THEN
-	fbPlantPID.AmbientTemperature  	:= 20;
-	fbPlantADRC.AmbientTemperature 	:= 20;	
+	fbPlantPID.Reset();
+	fbPlantADRC.Reset();	
 
 	fbPID.IntegratorBounds.Maximum 	:= 60.0;
     fbPID.IntegratorBounds.Minimum 	:= 0.0;
 	fbADRC.AutoTn 					:= FALSE;
     fbADRC.Tn 						:= LTIME#10M;
+END_IF
+
+IF FsCommon.F_ResetOnTrue(bSyncOutput) THEN 
+	fbPID.SyncOutput(fSyncValue);
 END_IF
 
 fbPID.Setpoint 	 := fSetpoint;
